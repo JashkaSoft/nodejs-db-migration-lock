@@ -1,0 +1,32 @@
+{
+  "name": "nodejs-db-migration-lock",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo for Node.js database migration lock packages",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "bootstrap": "lerna bootstrap",
+    "build": "lerna run build",
+    "clean": "lerna run clean",
+    "test": "lerna run test",
+    "test:e2e": "lerna run test:e2e --scope=@nodejs-db-migration-lock/postgres --stream",
+    "test:e2e:postgres": "lerna run test:e2e --scope=@nodejs-db-migration-lock/postgres --stream",
+    "test:e2e:build": "lerna run test:e2e:build --scope=@nodejs-db-migration-lock/postgres --stream",
+    "test:e2e:down": "lerna run test:e2e:down --scope=@nodejs-db-migration-lock/postgres --stream",
+    "lint": "lerna run lint",
+    "version": "lerna version",
+    "publish": "lerna publish",
+    "publish:ci": "lerna publish from-package --yes"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "lerna": "^8.0.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

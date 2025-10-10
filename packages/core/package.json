@@ -1,0 +1,42 @@
+{
+  "name": "@nodejs-db-migration-lock/core",
+  "version": "0.1.0",
+  "description": "Core functionality for database migration locking",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "database",
+    "migration",
+    "lock",
+    "concurrency"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/nodejs-db-migration-lock.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "@types/node": "^20.0.0",
+    "jest": "30.2.0",
+    "ts-jest": "29.4.4",
+    "typescript": "^5.3.3"
+  }
+}

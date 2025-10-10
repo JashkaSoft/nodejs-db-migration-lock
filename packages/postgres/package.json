@@ -1,0 +1,63 @@
+{
+  "name": "@nodejs-db-migration-lock/postgres",
+  "version": "0.1.0",
+  "description": "PostgreSQL adapter for database migration locking",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "jest",
+    "test:unit": "jest --config tests/jest.config.unit.js",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "./run-test.sh && jest --config tests/jest.config.e2e.js",
+    "test:e2e:build": "cd e2e && podman-compose build",
+    "test:e2e:up": "cd e2e && podman-compose up",
+    "test:e2e:down": "cd e2e && podman-compose down -v",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "database",
+    "migration",
+    "lock",
+    "postgres",
+    "postgresql"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/nodejs-db-migration-lock.git",
+    "directory": "packages/postgres"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.15.5",
+    "jest": "30.2.0",
+    "ts-jest": "29.4.4",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "pg": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "pg": {
+      "optional": true
+    },
+    "typeorm": {
+      "optional": true
+    }
+  }
+}
