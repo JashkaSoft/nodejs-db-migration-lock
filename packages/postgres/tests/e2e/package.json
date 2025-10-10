@@ -1,0 +1,23 @@
+{
+  "name": "e2e-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "E2E tests for nodejs-db-migration-lock",
+  "scripts": {
+    "e2e:migrate": "ts-node migrate.ts",
+    "e2e:verify": "ts-node verify.ts",
+    "test:docker": "podman-compose up --build",
+    "test:cleanup": "podman-compose down -v"
+  },
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "file:../../packages/core",
+    "@nodejs-db-migration-lock/postgres": "file:../../packages/postgres",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.10.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

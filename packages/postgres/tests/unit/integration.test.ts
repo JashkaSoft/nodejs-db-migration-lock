@@ -1,0 +1,580 @@
+/**
+ * E2E Integration tests for PostgreSQL package
+ * Tests complete flows with realistic scenarios
+ */
+
+import {
+  MigrationCoordinator,
+  MigrationRunner,
+  SqlDriver,
+} from '@nodejs-db-migration-lock/core';
+import { PostgresAdvisoryLock } from '../../src/advisory-lock';
+import { PostgresTableLock } from '../../src/table-lock';
+
+/**
+ * In-memory PostgreSQL simulator for E2E tests
+ */
+class PostgresSimulator {
+  private advisoryLocks = new Set<number>();
+  private tables = new Map<string, Map<number, any>>();
+  private tableDefinitions = new Set<string>();
+
+  // Advisory locks
+  tryAdvisoryLock(lockId: number): boolean {
+    if (this.advisoryLocks.has(lockId)) {
+      return false;
+    }
+    this.advisoryLocks.add(lockId);
+    return true;
+  }
+
+  advisoryUnlock(lockId: number): boolean {
+    return this.advisoryLocks.delete(lockId);
+  }
+
+  isAdvisoryLocked(lockId: number): boolean {
+    return this.advisoryLocks.has(lockId);
+  }
+
+  // Table operations
+  tableExists(tableName: string): boolean {
+    return this.tableDefinitions.has(tableName);
+  }
+
+  createTable(tableName: string): void {
+    this.tableDefinitions.add(tableName);
+    this.tables.set(tableName, new Map());
+  }
+
+  insertRow(tableName: string, id: number, data: any): boolean {
+    const table = this.tables.get(tableName);
+    if (!table) return false;
+    
+    if (table.has(id)) {
+      return false; // Conflict
+    }
+    
+    table.set(id, { id, ...data });
+    return true;
+  }
+
+  deleteRow(tableName: string, id: number): boolean {
+    const table = this.tables.get(tableName);
+    if (!table) return false;
+    return table.delete(id);
+  }
+
+  getRow(tableName: string, id: number): any | undefined {
+    return this.tables.get(tableName)?.get(id);
+  }
+
+  hasRow(tableName: string, id: number): boolean {
+    return this.tables.get(tableName)?.has(id) ?? false;
+  }
+
+  reset(): void {
+    this.advisoryLocks.clear();
+    this.tables.clear();
+    this.tableDefinitions.clear();
+  }
+}
+
+/**
+ * Realistic PostgreSQL driver for E2E testing
+ */
+class TestPostgresDriver implements SqlDriver {
+  constructor(private db: PostgresSimulator) {}
+
+  async query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+    const normalizedSql = sql.toLowerCase().trim();
+
+    // Advisory lock operations
+    if (normalizedSql.includes('pg_try_advisory_lock')) {
+      const lockId = params[0];
+      const success = this.db.tryAdvisoryLock(lockId);
+      return [{ pg_try_advisory_lock: success }] as T[];
+    }
+
+    if (normalizedSql.includes('pg_advisory_unlock')) {
+      const lockId = params[0];
+      const success = this.db.advisoryUnlock(lockId);
+      return [{ pg_advisory_unlock: success }] as T[];
+    }
+
+    // Table existence check
+    if (normalizedSql.includes('information_schema.tables')) {
+      const tableName = params[0];
+      const exists = this.db.tableExists(tableName);
+      return [{ exists }] as T[];
+    }
+
+    // Create table
+    if (normalizedSql.includes('create table')) {
+      const match = sql.match(/create table (?:if not exists )?(\w+)/i);
+      if (match) {
+        this.db.createTable(match[1]);
+      }
+      return [] as T[];
+    }
+
+    // Create sequence (ignore for simulation)
+    if (normalizedSql.includes('create sequence')) {
+      return [] as T[];
+    }
+
+    // DO block (ignore for simulation)
+    if (normalizedSql.includes('do $$')) {
+      return [] as T[];
+    }
+
+    // Insert with conflict handling
+    if (normalizedSql.includes('insert')) {
+      const tableName = 'migration_lock'; // Assuming this table
+      const lockId = params[0];
+      const inserted = this.db.insertRow(tableName, lockId, { created_at: new Date() });
+      
+      if (inserted) {
+        return [{ id: lockId }] as T[];
+      }
+      return [] as T[]; // Conflict
+    }
+
+    // Delete
+    if (normalizedSql.includes('delete')) {
+      const tableName = 'migration_lock';
+      const lockId = params[0];
+      this.db.deleteRow(tableName, lockId);
+      return [] as T[];
+    }
+
+    // Health check
+    if (normalizedSql === 'select 1') {
+      return [{ result: 1 }] as T[];
+    }
+
+    return [] as T[];
+  }
+}
+
+/**
+ * Test migration runner
+ */
+class TestMigrationRunner implements MigrationRunner {
+  public executed = false;
+  public executionCount = 0;
+  public shouldFail = false;
+
+  async run(): Promise<void> {
+    this.executionCount++;
+    if (this.shouldFail) {
+      throw new Error('Migration execution failed');
+    }
+    this.executed = true;
+    // Simulate migration time
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+
+  reset(): void {
+    this.executed = false;
+    this.executionCount = 0;
+    this.shouldFail = false;
+  }
+}
+
+describe('Integration Tests - PostgreSQL', () => {
+  let db: PostgresSimulator;
+
+  beforeEach(() => {
+    db = new PostgresSimulator();
+  });
+
+  describe('PostgresAdvisoryLock', () => {
+    it('should execute complete migration with advisory lock', async () => {
+      const driver = new TestPostgresDriver(db);
+      const lockProvider = new PostgresAdvisoryLock({ lockId: 12345 });
+      const migrationRunner = new TestMigrationRunner();
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+      });
+
+      await coordinator.migrate();
+
+      expect(migrationRunner.executed).toBe(true);
+      expect(db.isAdvisoryLocked(12345)).toBe(false); // Released after migration
+    });
+
+    it('should prevent concurrent migrations with advisory lock', async () => {
+      const driver1 = new TestPostgresDriver(db);
+      const driver2 = new TestPostgresDriver(db);
+
+      const lock1 = new PostgresAdvisoryLock({ lockId: 99999 });
+      const lock2 = new PostgresAdvisoryLock({ lockId: 99999 }); // Same ID
+
+      const runner1 = new TestMigrationRunner();
+      const runner2 = new TestMigrationRunner();
+
+      const coordinator1 = new MigrationCoordinator({
+        driver: driver1,
+        lockProvider: lock1,
+        migrationRunner: runner1,
+      });
+
+      const coordinator2 = new MigrationCoordinator({
+        driver: driver2,
+        lockProvider: lock2,
+        migrationRunner: runner2,
+        retryConfig: {
+          maxRetries: 2,
+          retryIntervalMs: 10,
+        },
+      });
+
+      // Run both concurrently
+      const [result1, result2] = await Promise.allSettled([
+        coordinator1.migrate(),
+        coordinator2.migrate(),
+      ]);
+
+      expect(result1.status).toBe('fulfilled');
+      expect(result2.status).toBe('rejected'); // Failed to acquire lock
+      expect(runner1.executed).toBe(true);
+      expect(runner2.executed).toBe(false);
+    });
+
+    it('should allow sequential execution after lock release', async () => {
+      const lockProvider = new PostgresAdvisoryLock({ lockId: 55555 });
+
+      // First migration
+      const driver1 = new TestPostgresDriver(db);
+      const runner1 = new TestMigrationRunner();
+      const coordinator1 = new MigrationCoordinator({
+        driver: driver1,
+        lockProvider,
+        migrationRunner: runner1,
+      });
+
+      await coordinator1.migrate();
+      expect(runner1.executed).toBe(true);
+      expect(db.isAdvisoryLocked(55555)).toBe(false);
+
+      // Second migration (should succeed)
+      const driver2 = new TestPostgresDriver(db);
+      const runner2 = new TestMigrationRunner();
+      const coordinator2 = new MigrationCoordinator({
+        driver: driver2,
+        lockProvider,
+        migrationRunner: runner2,
+      });
+
+      await coordinator2.migrate();
+      expect(runner2.executed).toBe(true);
+    });
+  });
+
+  describe('PostgresTableLock', () => {
+    it('should execute complete migration with table lock', async () => {
+      const driver = new TestPostgresDriver(db);
+      const lockProvider = new PostgresTableLock({
+        tableName: 'migration_lock',
+        lockId: 1,
+      });
+      const migrationRunner = new TestMigrationRunner();
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+      });
+
+      await coordinator.migrate();
+
+      expect(migrationRunner.executed).toBe(true);
+      expect(db.tableExists('migration_lock')).toBe(true);
+      expect(db.hasRow('migration_lock', 1)).toBe(false); // Lock released
+    });
+
+    it('should prevent concurrent migrations with table lock', async () => {
+      const lockProvider1 = new PostgresTableLock({ lockId: 1 });
+      const lockProvider2 = new PostgresTableLock({ lockId: 1 }); // Same ID
+
+      const driver1 = new TestPostgresDriver(db);
+      const driver2 = new TestPostgresDriver(db);
+
+      const runner1 = new TestMigrationRunner();
+      const runner2 = new TestMigrationRunner();
+
+      const coordinator1 = new MigrationCoordinator({
+        driver: driver1,
+        lockProvider: lockProvider1,
+        migrationRunner: runner1,
+      });
+
+      const coordinator2 = new MigrationCoordinator({
+        driver: driver2,
+        lockProvider: lockProvider2,
+        migrationRunner: runner2,
+        retryConfig: {
+          maxRetries: 2,
+          retryIntervalMs: 10,
+        },
+      });
+
+      // Run concurrently
+      const [result1, result2] = await Promise.allSettled([
+        coordinator1.migrate(),
+        coordinator2.migrate(),
+      ]);
+
+      expect(result1.status).toBe('fulfilled');
+      expect(result2.status).toBe('rejected');
+      expect(runner1.executed).toBe(true);
+      expect(runner2.executed).toBe(false);
+    });
+
+    it('should handle infrastructure setup', async () => {
+      const driver = new TestPostgresDriver(db);
+      const lockProvider = new PostgresTableLock({
+        tableName: 'custom_lock',
+        lockId: 5,
+      });
+
+      expect(db.tableExists('custom_lock')).toBe(false);
+
+      await lockProvider.ensureInfrastructure(driver);
+
+      expect(db.tableExists('custom_lock')).toBe(true);
+    });
+
+    it('should skip table creation if already exists', async () => {
+      const driver = new TestPostgresDriver(db);
+      const lockProvider = new PostgresTableLock();
+
+      // Create table manually
+      db.createTable('migration_lock');
+
+      await lockProvider.ensureInfrastructure(driver);
+
+      // Should not fail, just skip creation
+      expect(db.tableExists('migration_lock')).toBe(true);
+    });
+
+    it('should cleanup lock even if migration fails', async () => {
+      const driver = new TestPostgresDriver(db);
+      const lockProvider = new PostgresTableLock({ lockId: 1 });
+      const migrationRunner = new TestMigrationRunner();
+      migrationRunner.shouldFail = true;
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+      });
+
+      await expect(coordinator.migrate()).rejects.toThrow();
+
+      // Lock should be released
+      expect(db.hasRow('migration_lock', 1)).toBe(false);
+    });
+  });
+
+  describe('Lifecycle hooks', () => {
+    it('should call all hooks in correct order', async () => {
+      const callOrder: string[] = [];
+
+      const driver = new TestPostgresDriver(db);
+      const lockProvider = new PostgresAdvisoryLock({ lockId: 777 });
+      const migrationRunner = new TestMigrationRunner();
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+        onLockAcquired: () => callOrder.push('acquired'),
+        onMigrationStart: () => callOrder.push('start'),
+        onMigrationComplete: () => callOrder.push('complete'),
+        onLockReleased: () => callOrder.push('released'),
+      });
+
+      await coordinator.migrate();
+
+      expect(callOrder).toEqual(['acquired', 'start', 'complete', 'released']);
+    });
+
+    it('should call onLockWaiting when retrying', async () => {
+      const driver1 = new TestPostgresDriver(db);
+      const driver2 = new TestPostgresDriver(db);
+
+      const lockProvider1 = new PostgresTableLock({ lockId: 1 });
+      const lockProvider2 = new PostgresTableLock({ lockId: 1 });
+
+      const runner1 = new TestMigrationRunner();
+      const runner2 = new TestMigrationRunner();
+
+      const coordinator1 = new MigrationCoordinator({
+        driver: driver1,
+        lockProvider: lockProvider1,
+        migrationRunner: runner1,
+      });
+
+      const onLockWaiting = jest.fn();
+
+      const coordinator2 = new MigrationCoordinator({
+        driver: driver2,
+        lockProvider: lockProvider2,
+        migrationRunner: runner2,
+        retryConfig: {
+          maxRetries: 3,
+          retryIntervalMs: 10,
+        },
+        onLockWaiting,
+      });
+
+      // Acquire first lock
+      const migrate1 = coordinator1.migrate();
+      
+      // Try to acquire second (will retry)
+      const migrate2 = coordinator2.migrate().catch(() => {});
+
+      await Promise.all([migrate1, migrate2]);
+
+      expect(onLockWaiting.mock.calls.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Healthcheck', () => {
+    it('should perform healthcheck with advisory lock', async () => {
+      const driver = new TestPostgresDriver(db);
+      const lockProvider = new PostgresAdvisoryLock();
+      const migrationRunner = new TestMigrationRunner();
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+      });
+
+      const healthy = await coordinator.healthcheck();
+
+      expect(healthy).toBe(true);
+    });
+
+    it('should perform healthcheck with table lock', async () => {
+      const driver = new TestPostgresDriver(db);
+      const lockProvider = new PostgresTableLock();
+      const migrationRunner = new TestMigrationRunner();
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+      });
+
+      const healthy = await coordinator.healthcheck();
+
+      expect(healthy).toBe(true);
+    });
+  });
+
+  describe('Multiple processes simulation', () => {
+    it('should handle 3 concurrent processes correctly', async () => {
+      const results: string[] = [];
+
+      // Use a shared database instance to properly simulate lock contention
+      const sharedDb = new PostgresSimulator();
+
+      const createCoordinator = (id: number) => {
+        const driver = new TestPostgresDriver(sharedDb);
+        const lockProvider = new PostgresTableLock({ lockId: 1 });
+        const runner = new TestMigrationRunner();
+
+        return new MigrationCoordinator({
+          driver,
+          lockProvider,
+          migrationRunner: runner,
+          retryConfig: {
+            maxRetries: 2, // Short retry to fail fast
+            retryIntervalMs: 5,
+          },
+          onLockAcquired: () => results.push(`process${id}-acquired`),
+          onMigrationComplete: () => results.push(`process${id}-complete`),
+        });
+      };
+
+      const coordinator1 = createCoordinator(1);
+      const coordinator2 = createCoordinator(2);
+      const coordinator3 = createCoordinator(3);
+
+      // Run all concurrently
+      const migrations = await Promise.allSettled([
+        coordinator1.migrate(),
+        coordinator2.migrate(),
+        coordinator3.migrate(),
+      ]);
+
+      // At least one should succeed
+      const succeeded = migrations.filter(r => r.status === 'fulfilled');
+      const failed = migrations.filter(r => r.status === 'rejected');
+
+      expect(succeeded.length).toBeGreaterThanOrEqual(1);
+      expect(succeeded.length).toBeLessThanOrEqual(3);
+      
+      // The number of processes that acquired should match succeeded
+      expect(results.filter(r => r.includes('acquired'))).toHaveLength(succeeded.length);
+      expect(results.filter(r => r.includes('complete'))).toHaveLength(succeeded.length);
+    });
+  });
+
+  describe('Retry behavior', () => {
+    it('should eventually succeed with retries', async () => {
+      let attemptCount = 0;
+
+      class RetryableDriver implements SqlDriver {
+        constructor(private db: PostgresSimulator) {}
+
+        async query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+          const normalizedSql = sql.toLowerCase();
+          
+          if (normalizedSql.includes('insert')) {
+            attemptCount++;
+            if (attemptCount < 3) {
+              return [] as T[]; // Simulate conflict
+            }
+            const lockId = params[0];
+            this.db.insertRow('migration_lock', lockId, {});
+            return [{ id: lockId }] as T[];
+          }
+
+          // Delegate to normal driver
+          return new TestPostgresDriver(this.db).query(sql, params);
+        }
+      }
+
+      const driver = new RetryableDriver(db);
+      const lockProvider = new PostgresTableLock({ lockId: 1 });
+      const migrationRunner = new TestMigrationRunner();
+
+      const onLockWaiting = jest.fn();
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+        retryConfig: {
+          maxRetries: 5,
+          retryIntervalMs: 10,
+        },
+        onLockWaiting,
+      });
+
+      await coordinator.migrate();
+
+      expect(attemptCount).toBe(3);
+      expect(onLockWaiting).toHaveBeenCalledTimes(2);
+      expect(migrationRunner.executed).toBe(true);
+    });
+  });
+});
+

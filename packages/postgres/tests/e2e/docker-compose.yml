@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: migration_test
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d migration_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    networks:
+      - migration-net
+
+  # Migration process 1
+  migrator-1:
+    build:
+      context: ../../..
+      dockerfile: packages/postgres/e2e/Dockerfile
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: migration_test
+      PROCESS_ID: 1
+      LOCK_STRATEGY: table
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - migration-net
+    command: ["node", "dist/migrate.js"]
+
+  # Migration process 2
+  migrator-2:
+    build:
+      context: ../../..
+      dockerfile: packages/postgres/e2e/Dockerfile
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: migration_test
+      PROCESS_ID: 2
+      LOCK_STRATEGY: table
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - migration-net
+    command: ["node", "dist/migrate.js"]
+
+  # Migration process 3
+  migrator-3:
+    build:
+      context: ../../..
+      dockerfile: packages/postgres/e2e/Dockerfile
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: migration_test
+      PROCESS_ID: 3
+      LOCK_STRATEGY: table
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - migration-net
+    command: ["node", "dist/migrate.js"]
+
+  # Test runner to verify results
+  test-runner:
+    build:
+      context: ../../..
+      dockerfile: packages/postgres/e2e/Dockerfile
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: migration_test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - migration-net
+    # Keep container alive - verification will be executed via podman exec
+    command: ["sh", "-c", "echo '⏳ Test-runner ready, waiting for exec command...' && while true; do sleep 1; done"]
+
+networks:
+  migration-net:
+    driver: bridge
