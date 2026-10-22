@@ -3,7 +3,7 @@
  */
 
 import { PostgresAdvisoryLock } from '../../src/advisory-lock';
-import { MockPostgresDriver } from '../mocks';
+import { MockPostgresDriver } from './mocks';
 
 describe('PostgresAdvisoryLock', () => {
   let driver: MockPostgresDriver;
