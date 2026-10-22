@@ -2,29 +2,23 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+COPY package.json ./
 COPY lerna.json ./
 COPY tsconfig.json ./
+COPY packages/core/package.json packages/core/tsconfig.json ./packages/core/
+COPY packages/postgres/package.json packages/postgres/tsconfig.json ./packages/postgres/
 
-# Copy packages
-COPY packages/core ./packages/core
-COPY packages/postgres ./packages/postgres
-
-# Install root dependencies and build packages
 RUN npm install
+
+COPY packages/core/src ./packages/core/src
+COPY packages/postgres/src ./packages/postgres/src
+
 RUN npm run build
 
-# Copy e2e tests
-COPY packages/postgres/e2e ./packages/postgres/e2e
+COPY packages/postgres/tests/e2e ./packages/postgres/tests/e2e
 
-# Install e2e dependencies
-WORKDIR /app/packages/postgres/e2e
+WORKDIR /app/packages/postgres/tests/e2e
 RUN npm install
-
-# Compile TypeScript files to JavaScript
 RUN npx tsc
-
-WORKDIR /app/packages/postgres/e2e
 
 CMD ["node", "dist/migrate.js"]

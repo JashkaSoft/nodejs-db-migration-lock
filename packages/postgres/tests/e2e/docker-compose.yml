@@ -17,11 +17,11 @@ services:
     networks:
       - migration-net
 
-  # Migration process 1
   migrator-1:
+    image: nodejs-db-migration-lock-e2e:local
     build:
-      context: ../../..
-      dockerfile: packages/postgres/e2e/Dockerfile
+      context: ../../../../
+      dockerfile: packages/postgres/tests/e2e/Dockerfile
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -37,11 +37,11 @@ services:
       - migration-net
     command: ["node", "dist/migrate.js"]
 
-  # Migration process 2
   migrator-2:
+    image: nodejs-db-migration-lock-e2e:local
     build:
-      context: ../../..
-      dockerfile: packages/postgres/e2e/Dockerfile
+      context: ../../../../
+      dockerfile: packages/postgres/tests/e2e/Dockerfile
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -57,11 +57,11 @@ services:
       - migration-net
     command: ["node", "dist/migrate.js"]
 
-  # Migration process 3
   migrator-3:
+    image: nodejs-db-migration-lock-e2e:local
     build:
-      context: ../../..
-      dockerfile: packages/postgres/e2e/Dockerfile
+      context: ../../../../
+      dockerfile: packages/postgres/tests/e2e/Dockerfile
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -77,24 +77,24 @@ services:
       - migration-net
     command: ["node", "dist/migrate.js"]
 
-  # Test runner to verify results
   test-runner:
+    image: nodejs-db-migration-lock-e2e:local
     build:
-      context: ../../..
-      dockerfile: packages/postgres/e2e/Dockerfile
+      context: ../../../../
+      dockerfile: packages/postgres/tests/e2e/Dockerfile
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: testuser
       POSTGRES_PASSWORD: testpass
       POSTGRES_DB: migration_test
+      EXPECTED_PROCESSES: 3
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - migration-net
-    # Keep container alive - verification will be executed via podman exec
-    command: ["sh", "-c", "echo '⏳ Test-runner ready, waiting for exec command...' && while true; do sleep 1; done"]
+    command: ["node", "dist/verify.js"]
 
 networks:
   migration-net:

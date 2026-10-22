@@ -1,83 +1,96 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# E2E Test Runner Script
-# This script runs the E2E tests with podman Compose
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
-set -e
-
-echo "🚀 Starting E2E Tests for nodejs-db-migration-lock"
-echo "=================================================="
-echo ""
-
-# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Check if podman is running
-if ! podman info > /dev/null 2>&1; then
-    echo -e "${RED}❌ podman is not running. Please start podman first.${NC}"
-    exit 1
-fi
-
-# Check if podman Compose is available
-if ! command -v podman-compose &> /dev/null; then
-    echo -e "${RED}❌ podman-compose not found. Please install podman Compose.${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✅ podman is running${NC}"
-echo ""
-
-# Cleanup any previous runs
-echo "🧹 Cleaning up previous runs..."
-podman-compose down -v 2>/dev/null || true
-echo ""
-
-# Build and run tests
-echo "🏗️  Building podman images..."
-podman-compose build --no-cache
-
-echo ""
-echo "🐳 Starting containers..."
-echo "   - 1 PostgreSQL database"
-echo "   - 3 Migration processes (concurrent)"
-echo "   - 1 Test verifier"
-echo ""
-
-# Run containers in background
-podman-compose up -d
-
-echo ""
-echo "⏳ Waiting for migrations to complete (20 seconds)..."
-sleep 20
-
-echo ""
-echo "🔍 Running E2E tests with Jest..."
-echo ""
-
-# Run Jest E2E tests from the host (not inside the container)
-# The tests will connect to the postgres container via localhost:5433
-cd ..
-POSTGRES_HOST=localhost POSTGRES_PORT=5433 npm run test:e2e:only
-EXIT_CODE=$?
-cd e2e
-
-echo ""
+echo "Starting E2E tests for nodejs-db-migration-lock"
 echo "=================================================="
 
-if [ $EXIT_CODE -eq 0 ]; then
-    echo -e "${GREEN}✅ E2E Tests PASSED!${NC}"
+if command -v podman-compose >/dev/null 2>&1 && podman info >/dev/null 2>&1; then
+  COMPOSE=(podman-compose)
+  ENGINE=podman
+elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  COMPOSE=(docker compose)
+  ENGINE=docker
 else
-    echo -e "${RED}❌ E2E Tests FAILED!${NC}"
+  echo -e "${RED}Need podman-compose or docker compose, with a running engine.${NC}" >&2
+  exit 1
 fi
 
-echo ""
-echo "🧹 Cleaning up..."
-podman-compose down -v --timeout 5
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-migration-lock-e2e}"
 
-echo ""
+cleanup() {
+  "${COMPOSE[@]}" down -v --timeout 5 >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+echo "Cleaning up previous runs..."
+cleanup
+
+echo "Building and starting containers..."
+"${COMPOSE[@]}" up -d --build postgres migrator-1 migrator-2 migrator-3 test-runner
+
+find_runner() {
+  local candidates=(
+    "${COMPOSE_PROJECT_NAME}_test-runner_1"
+    "${COMPOSE_PROJECT_NAME}-test-runner-1"
+  )
+  local name
+  for name in "${candidates[@]}"; do
+    if "$ENGINE" inspect "$name" >/dev/null 2>&1; then
+      printf '%s\n' "$name"
+      return 0
+    fi
+  done
+
+  "$ENGINE" ps -a --format '{{.Names}}' | grep -E 'test-runner' | head -n1
+}
+
+container_name=""
+for _ in $(seq 1 60); do
+  container_name="$(find_runner || true)"
+  if [ -n "$container_name" ]; then
+    break
+  fi
+  sleep 1
+done
+
+if [ -z "$container_name" ]; then
+  echo -e "${RED}test-runner container did not start${NC}" >&2
+  "$ENGINE" ps -a || true
+  "${COMPOSE[@]}" logs || true
+  exit 1
+fi
+
+echo "Waiting for ${container_name}..."
+set +e
+exit_code="$("$ENGINE" wait "$container_name")"
+wait_status=$?
+set -e
+
+if [ "$wait_status" -ne 0 ] || [ -z "$exit_code" ]; then
+  echo -e "${RED}Failed to wait for test-runner${NC}" >&2
+  "${COMPOSE[@]}" logs test-runner || true
+  exit 1
+fi
+
 echo "=================================================="
+echo "Verifier logs:"
+"${COMPOSE[@]}" logs test-runner || true
+echo "=================================================="
+echo "test-runner exit code: ${exit_code}"
 
-exit $EXIT_CODE
+if [ "$exit_code" = "0" ]; then
+  echo -e "${GREEN}E2E tests PASSED${NC}"
+else
+  echo "Migrator logs:"
+  "${COMPOSE[@]}" logs migrator-1 migrator-2 migrator-3 || true
+  echo -e "${RED}E2E tests FAILED (exit ${exit_code})${NC}"
+fi
+
+exit "$exit_code"

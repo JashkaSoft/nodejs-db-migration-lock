@@ -144,16 +144,13 @@ async function runMigration(): Promise<void> {
   console.log(`[Process ${PROCESS_ID}] Database: ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
 
   const pool = new Pool(dbConfig);
+  const driver = new NodePgDriver(pool);
 
   let lockAcquiredTime: Date | null = null;
 
   try {
-    // Test connection
     await pool.query('SELECT 1');
     console.log(`[Process ${PROCESS_ID}] Database connection established`);
-
-    // Create driver
-    const driver = new NodePgDriver(pool);
 
     // Choose lock provider based on strategy
     const lockProvider =
@@ -196,10 +193,8 @@ async function runMigration(): Promise<void> {
       },
     });
 
-    // Run migration
     await coordinator.migrate();
 
-    // Log success
     await logMigrationAttempt(pool, {
       process_id: PROCESS_ID,
       started_at: lockAcquiredTime || new Date(),
@@ -209,15 +204,12 @@ async function runMigration(): Promise<void> {
     });
 
     console.log(`[Process ${PROCESS_ID}] ✅ Migration process completed successfully`);
-
-    process.exit(0)
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : String(error);
 
     console.error(`[Process ${PROCESS_ID}] ❌ Migration failed:`, errorMessage);
 
-    // Log failure
     try {
       await logMigrationAttempt(pool, {
         process_id: PROCESS_ID,
@@ -236,6 +228,11 @@ async function runMigration(): Promise<void> {
         `[Process ${PROCESS_ID}] Lock timeout after ${error.retries} retries`,
       );
     }
+
+    process.exitCode = 1;
+  } finally {
+    await driver.close().catch(() => undefined);
+    await pool.end().catch(() => undefined);
   }
 }
 

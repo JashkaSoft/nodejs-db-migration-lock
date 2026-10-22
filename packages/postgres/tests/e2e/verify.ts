@@ -26,12 +26,45 @@ function addResult(test: string, passed: boolean, message: string, details?: any
   }
 }
 
+async function waitForMigrationLogs(
+  pool: Pool,
+  expected: number,
+  timeoutMs: number,
+): Promise<void> {
+  const started = Date.now();
+
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const result = await pool.query<{ n: number }>(
+        'SELECT count(*)::int AS n FROM migration_logs',
+      );
+      const count = result.rows[0]?.n ?? 0;
+      console.log(`Waiting for migration logs... ${count}/${expected}`);
+      if (count >= expected) {
+        return;
+      }
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code && code !== '42P01') {
+        throw error;
+      }
+      console.log('Waiting for migration_logs table...');
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  throw new Error(`Timed out waiting for ${expected} migration log(s)`);
+}
+
 async function verify(): Promise<void> {
   console.log('🔍 Starting E2E test verification...\n');
 
   const pool = new Pool(dbConfig);
+  const expectedProcesses = parseInt(process.env.EXPECTED_PROCESSES || '3', 10);
 
   try {
+    await waitForMigrationLogs(pool, expectedProcesses, 120000);
 
     // Test 1: Check migration logs exist
     console.log('Test 1: Checking migration logs...');
@@ -184,36 +217,24 @@ async function verify(): Promise<void> {
     });
 
     const exitCode = passed === total ? 0 : 1;
-    
+
     if (passed === total) {
-      console.log('\n🎉 All E2E tests passed!\n');
+      console.log('\nAll E2E tests passed!\n');
     } else {
-      console.log('\n❌ Some E2E tests failed!\n');
+      console.log('\nSome E2E tests failed!\n');
     }
 
-    // Attempt to close pool but don't wait - just exit
-    pool.end().catch(err => {
+    await pool.end().catch((err) => {
       console.error('Error closing pool:', err);
     });
-
-    // Give pool a moment to close, then force exit
-    setTimeout(() => {
-      console.log('👋 Exiting...');
-      process.exit(exitCode);
-    }, 500);
+    process.exit(exitCode);
   } catch (error) {
-    console.error('\n❌ Verification failed with error:', error);
-    
-    // Attempt to close pool but don't wait
-    pool.end().catch(err => {
+    console.error('\nVerification failed with error:', error);
+
+    await pool.end().catch((err) => {
       console.error('Error closing pool on error:', err);
     });
-    
-    // Give pool a moment to close, then force exit
-    setTimeout(() => {
-      console.log('👋 Exiting with error...');
-      process.exit(1);
-    }, 500);
+    process.exit(1);
   }
 }
 
