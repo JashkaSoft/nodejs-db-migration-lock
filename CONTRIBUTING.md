@@ -57,9 +57,14 @@ npm install
 # Build all packages
 npm run build
 
-# Run tests
-npm run test
+# Run unit tests
+npm test
+
+# Run PostgreSQL e2e tests (requires podman-compose or docker compose)
+npm run test:e2e:postgres
 ```
+
+CI runs unit tests and the Postgres e2e suite on GitHub Actions.
 
 ## 📝 Adding Support for a New Database
 
