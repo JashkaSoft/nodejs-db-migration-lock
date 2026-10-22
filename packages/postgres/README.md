@@ -231,6 +231,8 @@ class NodePgDriver implements SqlDriver {
 }
 ```
 
+When constructed with a `Pool`, the driver checks out one client and reuses it for every query until `close()`. Advisory locks and `PostgresTableLock` infrastructure setup are session-scoped and will not work correctly if each query uses a different pool connection.
+
 ## Complete Example
 
 See the [examples directory](../../examples) for complete working examples.

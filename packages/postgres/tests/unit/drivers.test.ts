@@ -180,6 +180,42 @@ describe('NodePgDriver', () => {
         expect(endSpy).toHaveBeenCalled();
       });
     });
+
+    describe('session pinning', () => {
+      it('should reuse one pool client for all queries', async () => {
+        const sessionClient = {
+          queries: [] as Array<{ sql: string; params?: any[] }>,
+          released: false,
+          async query(sql: string, params?: any[]) {
+            this.queries.push({ sql, params });
+            return { rows: [{ ok: true }] };
+          },
+          release() {
+            this.released = true;
+          },
+        };
+        const realShapedPool = {
+          totalCount: 0,
+          async connect() {
+            return sessionClient;
+          },
+          async query() {
+            throw new Error('pool.query should not be used after checkout');
+          },
+          async end() {
+            return undefined;
+          },
+        };
+
+        const driver = new NodePgDriver(realShapedPool as any);
+        await driver.query('SELECT 1');
+        await driver.query('SELECT 2');
+
+        expect(sessionClient.queries).toHaveLength(2);
+        await driver.close();
+        expect(sessionClient.released).toBe(true);
+      });
+    });
   });
 
   describe('with Client', () => {
