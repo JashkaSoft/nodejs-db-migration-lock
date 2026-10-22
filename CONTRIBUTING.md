@@ -40,8 +40,8 @@ nodejs-db-migration-lock/
 
 ### Prerequisites
 
-- Node.js >= 18
-- npm >= 9
+- Node.js >= 24.15 (CI and Docker use 26, the current Node.js release)
+- npm >= 11
 - Git
 
 ### Setup

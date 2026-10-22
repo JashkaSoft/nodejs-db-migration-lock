@@ -190,6 +190,8 @@ new PostgresTableLock({ tableName: 'migration_lock' })
 
 ## 🛠️ Development
 
+Requires **Node.js 26** (CI and Docker) or at least **24.15**.
+
 ```bash
 # Install dependencies
 npm install
