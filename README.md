@@ -197,12 +197,14 @@ npm install
 # Build all packages
 npm run build
 
-# Run tests
-npm run test
+# Run unit tests
+npm test
 
-# Publish (maintainers only)
-npm run publish
+# Run PostgreSQL concurrent e2e tests (podman-compose or docker compose)
+npm run test:e2e:postgres
 ```
+
+MySQL and SQLite adapters are not in this repo yet. The shippable surface is `@nodejs-db-migration-lock/core` plus `@nodejs-db-migration-lock/postgres`.
 
 ## 🤝 Contributing
 
