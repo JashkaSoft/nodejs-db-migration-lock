@@ -21,12 +21,16 @@
     "publish:ci": "lerna publish from-package --yes"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "lerna": "^8.0.0",
-    "typescript": "^5.3.3"
+    "@types/node": "^26.6.5",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "lerna": "^10.1.1",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
+    "node": ">=24.15.0",
+    "npm": ">=11.0.0"
+  },
+  "overrides": {
+    "undici": "^8.12.3"
   }
 }
