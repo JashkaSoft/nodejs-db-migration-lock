@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2024",
     "module": "commonjs",
-    "lib": ["ES2020"],
+    "lib": ["ES2024"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -15,7 +15,8 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node"
+    "moduleResolution": "bundler",
+    "types": ["node", "jest"]
   },
   "exclude": [
     "node_modules",

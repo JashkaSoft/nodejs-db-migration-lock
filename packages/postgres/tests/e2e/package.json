@@ -4,18 +4,17 @@
   "private": true,
   "description": "E2E tests for nodejs-db-migration-lock",
   "scripts": {
-    "e2e:migrate": "ts-node migrate.ts",
-    "e2e:verify": "ts-node verify.ts"
+    "e2e:migrate": "npx tsc && node dist/migrate.js",
+    "e2e:verify": "npx tsc && node dist/verify.js"
   },
   "dependencies": {
     "@nodejs-db-migration-lock/core": "file:../../../core",
     "@nodejs-db-migration-lock/postgres": "file:../../../postgres",
-    "pg": "^8.11.3"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/pg": "^8.10.9",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "typescript": "^7.0.2"
   }
 }
