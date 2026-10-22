@@ -11,14 +11,14 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist *.tsbuildinfo",
-    "test": "jest",
+    "test": "jest --config tests/jest.config.unit.js",
     "test:unit": "jest --config tests/jest.config.unit.js",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:e2e": "./run-test.sh && jest --config tests/jest.config.e2e.js",
-    "test:e2e:build": "cd e2e && podman-compose build",
-    "test:e2e:up": "cd e2e && podman-compose up",
-    "test:e2e:down": "cd e2e && podman-compose down -v",
+    "test:watch": "jest --config tests/jest.config.unit.js --watch",
+    "test:coverage": "jest --config tests/jest.config.unit.js --coverage",
+    "test:e2e": "./tests/e2e/run-test.sh",
+    "test:e2e:build": "podman-compose -f tests/e2e/docker-compose.yml build",
+    "test:e2e:up": "podman-compose -f tests/e2e/docker-compose.yml up",
+    "test:e2e:down": "podman-compose -f tests/e2e/docker-compose.yml down -v",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
