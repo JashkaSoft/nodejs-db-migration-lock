@@ -1,6 +1,9 @@
+const path = require('path');
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  rootDir: path.join(__dirname, '..'),
   roots: ['<rootDir>/tests/unit'],
   testMatch: ['**/*.test.ts'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/', '/e2e/'],
@@ -22,4 +25,3 @@ module.exports = {
     '^@nodejs-db-migration-lock/core$': '<rootDir>/../core/src',
   },
 };
-

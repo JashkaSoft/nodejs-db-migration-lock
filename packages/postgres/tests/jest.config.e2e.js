@@ -1,6 +1,9 @@
+const path = require('path');
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  rootDir: path.join(__dirname, '..'),
   roots: ['<rootDir>/tests/e2e'],
   testMatch: ['**/*.test.ts'],
   collectCoverageFrom: [
@@ -11,8 +14,6 @@ module.exports = {
   moduleNameMapper: {
     '^@nodejs-db-migration-lock/core$': '<rootDir>/../core/src',
   },
-  testTimeout: 30000, // 30 seconds for E2E tests
+  testTimeout: 30000,
   verbose: true,
-  bail: true, // Stop on first failure
 };
-

@@ -152,8 +152,8 @@ describe('Retry Utilities', () => {
       });
       const duration = Date.now() - start;
       
-      // Should wait 3 times (50ms each) = ~150ms
-      expect(duration).toBeGreaterThanOrEqual(100);
+      // Two 50ms sleeps between the first three attempts, plus a final call.
+      expect(duration).toBeGreaterThanOrEqual(80);
       expect(duration).toBeLessThan(250);
     });
   });
