@@ -76,6 +76,37 @@ describe('TypeORMDriver', () => {
     expect(dataSource.transactionCalled).toBe(true);
   });
 
+  it('reuses one query runner for session locks', async () => {
+    const runner = {
+      isReleased: false,
+      queries: [] as Array<{ sql: string; params?: unknown[] }>,
+      connect: jest.fn(async () => undefined),
+      query: jest.fn(async (sql: string, params?: unknown[]) => {
+        runner.queries.push({ sql, params });
+        return [];
+      }),
+      startTransaction: jest.fn(async () => undefined),
+      commitTransaction: jest.fn(async () => undefined),
+      rollbackTransaction: jest.fn(async () => undefined),
+      release: jest.fn(async () => {
+        runner.isReleased = true;
+      }),
+    };
+    (dataSource as MockDataSource & { createQueryRunner: () => typeof runner }).createQueryRunner = () => runner;
+
+    const driver = new TypeORMDriver(asDataSource(dataSource));
+    await driver.query('SELECT 1');
+    await driver.query('SELECT 2');
+    await driver.transaction(async () => 'ok');
+    await driver.close();
+
+    expect(runner.connect).toHaveBeenCalledTimes(1);
+    expect(runner.queries.map((query) => query.sql)).toEqual(['SELECT 1', 'SELECT 2']);
+    expect(runner.commitTransaction).toHaveBeenCalledTimes(1);
+    expect(runner.release).toHaveBeenCalledTimes(1);
+    expect(dataSource.isInitialized).toBe(false);
+  });
+
   it('destroys the DataSource on close', async () => {
     const driver = new TypeORMDriver(asDataSource(dataSource));
     await driver.close();

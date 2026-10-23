@@ -1,12 +1,21 @@
 import { SqlDriver } from '@nodejs-db-migration-lock/core';
 import type { QueryOptions, Sequelize, Transaction } from 'sequelize';
 
+type ConnectionManager = {
+  getConnection(options: { type: string }): Promise<unknown>;
+  releaseConnection(connection: unknown): Promise<void>;
+};
+
 /**
  * Adapter for a Sequelize instance.
- * Database-agnostic: pair with a lock provider from postgres, mysql, or another dialect package.
+ * When connectionManager is present, one connection is checked out and every
+ * lock query is sent on it via a transaction-shaped options object. Sequelize
+ * only keeps a connection checked out for the whole call when a transaction
+ * is set; it releases pool connections otherwise.
  */
 export class SequelizeDriver implements SqlDriver {
   private activeTransaction: Transaction | null = null;
+  private pinned: unknown | undefined;
 
   constructor(private sequelize: Sequelize) {
     if (!sequelize || typeof sequelize.query !== 'function') {
@@ -17,7 +26,10 @@ export class SequelizeDriver implements SqlDriver {
   async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     const dialect = this.sequelize.getDialect();
     const options: QueryOptions = { raw: true };
-    if (this.activeTransaction) {
+    const pinned = await this.getPinned();
+    if (pinned) {
+      (options as { transaction?: { connection: unknown } }).transaction = { connection: pinned };
+    } else if (this.activeTransaction) {
       options.transaction = this.activeTransaction;
     }
     if (params !== undefined) {
@@ -45,17 +57,57 @@ export class SequelizeDriver implements SqlDriver {
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {
-    return this.sequelize.transaction(async (transaction) => {
-      this.activeTransaction = transaction;
-      try {
-        return await fn();
-      } finally {
-        this.activeTransaction = null;
-      }
-    });
+    const pinned = await this.getPinned();
+    if (!pinned) {
+      return this.sequelize.transaction(async (transaction) => {
+        this.activeTransaction = transaction;
+        try {
+          return await fn();
+        } finally {
+          this.activeTransaction = null;
+        }
+      });
+    }
+
+    const hold = { connection: pinned } as unknown as Transaction;
+    await this.sequelize.query('BEGIN', { transaction: hold });
+    try {
+      const result = await fn();
+      await this.sequelize.query('COMMIT', { transaction: hold });
+      return result;
+    } catch (error) {
+      await this.sequelize.query('ROLLBACK', { transaction: hold });
+      throw error;
+    }
   }
 
   async close(): Promise<void> {
+    const manager = this.manager();
+    if (this.pinned && manager) {
+      await manager.releaseConnection(this.pinned);
+      this.pinned = undefined;
+    }
     await this.sequelize.close();
+  }
+
+  private manager(): ConnectionManager | undefined {
+    const manager = (this.sequelize as Sequelize & { connectionManager?: ConnectionManager })
+      .connectionManager;
+    if (!manager || typeof manager.getConnection !== 'function') {
+      return undefined;
+    }
+    return manager;
+  }
+
+  private async getPinned(): Promise<unknown | undefined> {
+    if (this.pinned) {
+      return this.pinned;
+    }
+    const manager = this.manager();
+    if (!manager) {
+      return undefined;
+    }
+    this.pinned = await manager.getConnection({ type: 'write' });
+    return this.pinned;
   }
 }

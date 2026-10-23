@@ -112,6 +112,26 @@ describe('SequelizeDriver', () => {
     expect(sequelize.queries[0].options.transaction).toEqual({ id: 'tx' });
   });
 
+  it('checks out one connection and keeps it for later queries', async () => {
+    const connection = { id: 'pinned' };
+    const manager = {
+      getConnection: jest.fn(async () => connection),
+      releaseConnection: jest.fn(async () => undefined),
+    };
+    (sequelize as MockSequelize & { connectionManager: typeof manager }).connectionManager = manager;
+
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await driver.query('SELECT 1');
+    await driver.query('SELECT 2');
+    await driver.close();
+
+    expect(manager.getConnection).toHaveBeenCalledTimes(1);
+    expect(sequelize.queries[0].options.transaction).toEqual({ connection });
+    expect(sequelize.queries[1].options.transaction).toEqual({ connection });
+    expect(manager.releaseConnection).toHaveBeenCalledWith(connection);
+    expect(sequelize.closed).toBe(true);
+  });
+
   it('closes the Sequelize instance', async () => {
     const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
     await driver.close();

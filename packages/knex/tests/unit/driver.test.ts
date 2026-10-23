@@ -2,7 +2,7 @@ import type { Knex } from 'knex';
 import { KnexDriver } from '../../src/knex-driver';
 
 class MockKnex {
-  public calls: Array<{ sql: string; params?: unknown[] }> = [];
+  public calls: Array<{ sql: string; params?: unknown[]; connection?: unknown }> = [];
   public nextResult: unknown = { rows: [] };
   public shouldFail = false;
   public destroyed = false;
@@ -94,6 +94,40 @@ describe('KnexDriver', () => {
     ).resolves.toBe('success');
     expect(knex.transactionCalled).toBe(true);
     expect(knex.calls).toHaveLength(0);
+  });
+
+  it('checks out one client connection and runs lock SQL on it', async () => {
+    const connection = { id: 'pinned' };
+    const client = {
+      acquireConnection: jest.fn(async () => connection),
+      releaseConnection: jest.fn(async () => undefined),
+    };
+    (knex as MockKnex & { client: typeof client }).client = client;
+    knex.raw = (sql: string, params?: unknown[]) => {
+      const builder = Promise.resolve(knex.nextResult) as Promise<unknown> & {
+        connection?: (pinned: unknown) => Promise<unknown>;
+      };
+      builder.connection = (pinned: unknown) => {
+        knex.calls.push({ sql, params, connection: pinned });
+        return Promise.resolve(knex.nextResult);
+      };
+      return builder;
+    };
+
+    const driver = new KnexDriver(knex as unknown as Knex);
+    await driver.query('SELECT pg_advisory_lock($1)', [1]);
+    await driver.query('SELECT 1');
+    await driver.close();
+
+    expect(client.acquireConnection).toHaveBeenCalledTimes(1);
+    expect(knex.calls[0]).toMatchObject({
+      sql: 'SELECT pg_advisory_lock(?)',
+      params: [1],
+      connection,
+    });
+    expect(knex.calls[1].connection).toBe(connection);
+    expect(client.releaseConnection).toHaveBeenCalledWith(connection);
+    expect(knex.destroyed).toBe(true);
   });
 
   it('destroys the Knex instance on close', async () => {
