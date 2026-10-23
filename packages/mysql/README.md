@@ -17,6 +17,8 @@ npm install @nodejs-db-migration-lock/typeorm typeorm mysql2
 
 **Table lock** — `INSERT IGNORE` into a one-row lock table. Survives reconnects until released.
 
+On first use it creates `migration_lock` (or `tableName`). That needs `CREATE` on the database unless an admin pre-creates the table. `GET_LOCK` advisory locks create no tables.
+
 ## Usage
 
 ```typescript

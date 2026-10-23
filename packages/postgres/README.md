@@ -56,6 +56,8 @@ Uses a dedicated table with a fixed ID to ensure only one lock exists.
 - Slightly slower (involves table I/O)
 - Needs manual cleanup if process crashes
 
+On first use it creates `migration_lock` (or `tableName`) and `{tableName}_id_seq`. That needs `CREATE` on the schema unless an admin pre-creates them. Advisory locks create no objects.
+
 ## Usage
 
 ### With TypeORM
