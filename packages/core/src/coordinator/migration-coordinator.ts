@@ -1,9 +1,12 @@
 import { LockProvider } from '../interfaces/lock-provider';
 import { MigrationRunner } from '../interfaces/migration-runner';
 import { SqlDriver } from '../interfaces/sql-driver';
+import { AcquireOptions } from '../lock/acquire-options';
+import { withProcessLock } from '../lock/process-mutex';
 import { withRetry, RetryConfig } from '../retry';
 import {
   LockAcquisitionError,
+  LockLeaseLostError,
   LockTimeoutError,
   MigrationExecutionError,
 } from '../errors';
@@ -13,6 +16,8 @@ export interface CoordinatorOptions {
   lockProvider: LockProvider;
   migrationRunner: MigrationRunner;
   retryConfig?: Partial<RetryConfig>;
+  /** How often to extend a table-lock lease while migrations run. */
+  renewIntervalMs?: number;
   onLockWaiting?: (attempt: number, maxRetries: number) => void;
   onLockAcquired?: () => void;
   onLockReleased?: () => void;
@@ -26,16 +31,21 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   timeoutMs: 120000,
 };
 
+const DEFAULT_RENEW_INTERVAL_MS = 10_000;
+
 export class MigrationCoordinator {
   private readonly driver: SqlDriver;
   private readonly lockProvider: LockProvider;
   private readonly migrationRunner: MigrationRunner;
   private readonly retryConfig: RetryConfig;
+  private readonly renewIntervalMs: number;
   private readonly onLockWaiting?: (attempt: number, maxRetries: number) => void;
   private readonly onLockAcquired?: () => void;
   private readonly onLockReleased?: () => void;
   private readonly onMigrationStart?: () => void;
   private readonly onMigrationComplete?: () => void;
+  private leaseLost = false;
+  private lockHeld = false;
 
   constructor(options: CoordinatorOptions) {
     this.driver = options.driver;
@@ -45,6 +55,7 @@ export class MigrationCoordinator {
       ...DEFAULT_RETRY_CONFIG,
       ...options.retryConfig,
     };
+    this.renewIntervalMs = options.renewIntervalMs ?? DEFAULT_RENEW_INTERVAL_MS;
     this.onLockWaiting = options.onLockWaiting;
     this.onLockAcquired = options.onLockAcquired;
     this.onLockReleased = options.onLockReleased;
@@ -53,40 +64,38 @@ export class MigrationCoordinator {
   }
 
   async migrate(signal?: AbortSignal): Promise<void> {
+    const key = this.lockProvider.lockKey ?? this.lockProvider.name;
+    return withProcessLock(key, () => this.migrateBody(signal));
+  }
+
+  private async migrateBody(signal?: AbortSignal): Promise<void> {
+    this.leaseLost = false;
+    this.lockHeld = false;
+
     try {
-      // Ensure infrastructure (tables, etc.) exists
-      if (this.lockProvider.ensureInfrastructure) {
-        await this.lockProvider.ensureInfrastructure(this.driver);
+      if (this.lockProvider.transactionScoped) {
+        if (!this.driver.transaction) {
+          throw new LockAcquisitionError(
+            'Transaction-scoped locks require SqlDriver.transaction',
+          );
+        }
+        try {
+          await this.driver.transaction(() => this.executeLocked(signal));
+        } finally {
+          if (this.lockHeld) {
+            this.onLockReleased?.();
+          }
+        }
+        return;
       }
 
-      // Acquire lock with retry
-      const lockAcquired = await this.acquireLockWithRetry(signal);
-
-      if (!lockAcquired) {
-        throw new LockTimeoutError(
-          this.retryConfig.timeoutMs || 0,
-          this.retryConfig.maxRetries,
-        );
-      }
-
-      this.onLockAcquired?.();
-
-      try {
-        // Run migrations
-        this.onMigrationStart?.();
-        await this.migrationRunner.run();
-        this.onMigrationComplete?.();
-      } catch (error) {
-        throw new MigrationExecutionError(
-          'Failed to execute migrations',
-          error,
-        );
-      } finally {
-        // Always release the lock
-        await this.releaseLock();
-      }
+      await this.executeLocked(signal);
     } catch (error) {
-      if (error instanceof LockTimeoutError || error instanceof MigrationExecutionError) {
+      if (
+        error instanceof LockTimeoutError ||
+        error instanceof MigrationExecutionError ||
+        error instanceof LockLeaseLostError
+      ) {
         throw error;
       }
       throw new LockAcquisitionError(
@@ -96,10 +105,63 @@ export class MigrationCoordinator {
     }
   }
 
-  private async acquireLockWithRetry(signal?: AbortSignal): Promise<boolean> {
+  private async executeLocked(signal?: AbortSignal): Promise<void> {
+    if (this.lockProvider.ensureInfrastructure) {
+      await this.lockProvider.ensureInfrastructure(this.driver);
+    }
+
+    const lockAcquired = await this.acquireLock(signal);
+    if (!lockAcquired) {
+      throw new LockTimeoutError(
+        this.retryConfig.timeoutMs || 0,
+        this.lockProvider.waitsInDatabase ? 1 : this.retryConfig.maxRetries,
+      );
+    }
+
+    this.lockHeld = true;
+    this.onLockAcquired?.();
+    const stopRenewal = this.startRenewal();
+
+    try {
+      this.onMigrationStart?.();
+      await this.migrationRunner.run();
+      if (this.leaseLost) {
+        throw new LockLeaseLostError();
+      }
+      this.onMigrationComplete?.();
+    } catch (error) {
+      if (error instanceof LockLeaseLostError) {
+        throw error;
+      }
+      throw new MigrationExecutionError(
+        'Failed to execute migrations',
+        error,
+      );
+    } finally {
+      stopRenewal();
+      if (!this.lockProvider.transactionScoped) {
+        await this.releaseLock();
+      }
+    }
+  }
+
+  private async acquireLock(signal?: AbortSignal): Promise<boolean> {
+    const options: AcquireOptions = {
+      signal,
+      timeoutMs: this.retryConfig.timeoutMs,
+    };
+
+    if (this.lockProvider.waitsInDatabase) {
+      if (signal?.aborted) {
+        throw new Error('Operation aborted');
+      }
+      this.onLockWaiting?.(1, 1);
+      return this.lockProvider.acquire(this.driver, options);
+    }
+
     return withRetry(
-      () => this.lockProvider.acquire(this.driver, signal),
-      (acquired) => !acquired, // Retry if lock was not acquired
+      () => this.lockProvider.acquire(this.driver, options),
+      (acquired) => !acquired,
       {
         ...this.retryConfig,
         signal,
@@ -108,12 +170,32 @@ export class MigrationCoordinator {
     );
   }
 
+  private startRenewal(): () => void {
+    if (!this.lockProvider.renew) {
+      return () => undefined;
+    }
+
+    const timer = setInterval(() => {
+      void this.lockProvider.renew!(this.driver).then(
+        (renewed) => {
+          if (!renewed) {
+            this.leaseLost = true;
+          }
+        },
+        () => {
+          this.leaseLost = true;
+        },
+      );
+    }, this.renewIntervalMs);
+    timer.unref?.();
+    return () => clearInterval(timer);
+  }
+
   private async releaseLock(): Promise<void> {
     try {
       await this.lockProvider.release(this.driver);
       this.onLockReleased?.();
     } catch (error) {
-      // Log but don't throw - we don't want to hide migration errors
       console.error('Failed to release lock:', error);
     }
   }
@@ -126,7 +208,6 @@ export class MigrationCoordinator {
       if (this.lockProvider.healthcheck) {
         return await this.lockProvider.healthcheck(this.driver);
       }
-      // Default healthcheck: try a simple query
       await this.driver.query('SELECT 1');
       return true;
     } catch {

@@ -39,9 +39,15 @@ An interface that defines how locks are acquired and released.
 ```typescript
 interface LockProvider {
   name: string;
+  lockKey?: string;
+  waitsInDatabase?: boolean;
+  transactionScoped?: boolean;
   ensureInfrastructure?(driver: SqlDriver): Promise<void>;
-  acquire(driver: SqlDriver, signal?: AbortSignal): Promise<boolean>;
+  acquire(driver: SqlDriver, options?: { signal?: AbortSignal; timeoutMs?: number }): Promise<boolean>;
   release(driver: SqlDriver): Promise<void>;
+  renew?(driver: SqlDriver): Promise<boolean>;
+  status?(driver: SqlDriver): Promise<LockStatus | null>;
+  forceRelease?(driver: SqlDriver): Promise<void>;
   healthcheck?(driver: SqlDriver): Promise<boolean>;
 }
 ```

@@ -6,6 +6,7 @@ import { MigrationCoordinator } from '../coordinator/migration-coordinator';
 import { LockProvider } from '../interfaces';
 import {
   LockAcquisitionError,
+  LockLeaseLostError,
   LockTimeoutError,
   MigrationExecutionError,
 } from '../errors';
@@ -409,6 +410,122 @@ describe('MigrationCoordinator', () => {
       await expect(coordinator2.migrate()).rejects.toThrow(LockTimeoutError);
 
       expect(results).toEqual(['c1-acquired', 'c1-complete']);
+    });
+
+    it('runs same-key callers one at a time', async () => {
+      let active = 0;
+      let maxActive = 0;
+
+      const runner1 = new MockMigrationRunner();
+      const runner2 = new MockMigrationRunner();
+      runner1.runDelay = 20;
+      runner2.runDelay = 20;
+      const watch = (runner: MockMigrationRunner) => {
+        const original = runner.run.bind(runner);
+        runner.run = async () => {
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          try {
+            await original();
+          } finally {
+            active -= 1;
+          }
+        };
+      };
+      watch(runner1);
+      watch(runner2);
+      const lock1 = new MockLockProvider();
+      const lock2 = new MockLockProvider();
+      lock1.lockKey = 'shared-migration';
+      lock2.lockKey = 'shared-migration';
+
+      await Promise.all([
+        new MigrationCoordinator({
+          driver: new MockSqlDriver(),
+          lockProvider: lock1,
+          migrationRunner: runner1,
+        }).migrate(),
+        new MigrationCoordinator({
+          driver: new MockSqlDriver(),
+          lockProvider: lock2,
+          migrationRunner: runner2,
+        }).migrate(),
+      ]);
+
+      expect(maxActive).toBe(1);
+      expect(runner1.runCalls).toBe(1);
+      expect(runner2.runCalls).toBe(1);
+    });
+  });
+
+  describe('database wait and lease', () => {
+    it('asks a database-side lock once and passes the timeout', async () => {
+      lockProvider.waitsInDatabase = true;
+      lockProvider.shouldAcquireSucceed = false;
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+        retryConfig: { maxRetries: 10, retryIntervalMs: 5, timeoutMs: 2500 },
+      });
+
+      await expect(coordinator.migrate()).rejects.toThrow(LockTimeoutError);
+      expect(lockProvider.acquireCalls).toBe(1);
+      expect(lockProvider.lastAcquireOptions).toEqual({ signal: undefined, timeoutMs: 2500 });
+    });
+
+    it('holds a transaction-scoped lock across the migration and skips release', async () => {
+      lockProvider.transactionScoped = true;
+      let inside = false;
+      const original = migrationRunner.run.bind(migrationRunner);
+      migrationRunner.run = async () => {
+        inside = true;
+        await original();
+        expect(inside).toBe(true);
+      };
+
+      const onLockReleased = jest.fn();
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+        onLockReleased,
+      });
+
+      await coordinator.migrate();
+      expect(lockProvider.releaseCalls).toBe(0);
+      expect(onLockReleased).toHaveBeenCalledTimes(1);
+      expect(migrationRunner.runCalls).toBe(1);
+    });
+
+    it('rejects a transaction-scoped lock when the driver cannot open a transaction', async () => {
+      lockProvider.transactionScoped = true;
+      Object.defineProperty(driver, 'transaction', { value: undefined });
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+      });
+
+      await expect(coordinator.migrate()).rejects.toThrow(LockAcquisitionError);
+      expect(migrationRunner.runCalls).toBe(0);
+    });
+
+    it('fails when the lease is lost during the migration', async () => {
+      lockProvider.renew = async () => false;
+      migrationRunner.runDelay = 80;
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+        renewIntervalMs: 5,
+      });
+
+      await expect(coordinator.migrate()).rejects.toThrow(LockLeaseLostError);
+      expect(lockProvider.releaseCalls).toBe(1);
     });
   });
 });

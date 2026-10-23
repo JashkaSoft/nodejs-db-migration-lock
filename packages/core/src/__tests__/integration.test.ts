@@ -203,7 +203,6 @@ describe('Integration Tests', () => {
         onLockReleased: () => executionOrder.push('process1-released'),
       });
 
-      // Second process (will fail to acquire lock)
       const driver2 = new TestSqlDriver(db);
       const lockProvider2 = new TestTableLock();
       const migrations2 = ['001_migration'];
@@ -213,30 +212,39 @@ describe('Integration Tests', () => {
         driver: driver2,
         lockProvider: lockProvider2,
         migrationRunner: migrationRunner2,
-        retryConfig: {
-          maxRetries: 2,
-          retryIntervalMs: 10,
-        },
-        onLockWaiting: () => executionOrder.push('process2-waiting'),
+        onLockAcquired: () => executionOrder.push('process2-acquired'),
+        onMigrationComplete: () => executionOrder.push('process2-complete'),
       });
 
-      // Start both migrations concurrently
+      let active = 0;
+      let maxActive = 0;
+      const watch = (runner: TestMigrationRunner) => {
+        const original = runner.run.bind(runner);
+        runner.run = async () => {
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          try {
+            await original();
+          } finally {
+            active -= 1;
+          }
+        };
+      };
+      watch(migrationRunner1);
+      watch(migrationRunner2);
+
       const [result1, result2] = await Promise.allSettled([
         coordinator1.migrate(),
         coordinator2.migrate(),
       ]);
 
       expect(result1.status).toBe('fulfilled');
-      expect(result2.status).toBe('rejected');
-      
-      // Only process 1 should have acquired and completed
-      expect(executionOrder).toContain('process1-acquired');
+      expect(result2.status).toBe('fulfilled');
+      expect(maxActive).toBe(1);
       expect(executionOrder).toContain('process1-complete');
-      expect(executionOrder).toContain('process2-waiting');
-      
-      // Process 1 completed, process 2 never acquired
+      expect(executionOrder).toContain('process2-complete');
       expect(migrationRunner1.executed).toHaveLength(1);
-      expect(migrationRunner2.executed).toHaveLength(0);
+      expect(migrationRunner2.executed).toHaveLength(1);
     });
 
     it('should allow sequential execution after lock release', async () => {
