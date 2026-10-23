@@ -144,6 +144,11 @@ const driver = new MyCustomDriver(myClient);
 - `SequelizeDriver` - wraps a Sequelize instance
 - Pair with a dialect lock package (`postgres`, `mysql`, …)
 
+### @nodejs-db-migration-lock/knex
+**Query-builder adapter (database-agnostic)**
+- `KnexDriver` - wraps a Knex instance
+- Pair with a dialect lock package (`postgres`, `mysql`, …)
+
 ### Other packages
 - `@nodejs-db-migration-lock/mysql` - MySQL/MariaDB locks + `Mysql2Driver`
 - `@nodejs-db-migration-lock/sqlite` - SQLite support (planned)
@@ -296,7 +301,7 @@ class MySQLTableLock implements LockProvider {
 }
 ```
 
-4. **No changes to core or ORM adapters.** Keep TypeORM/Sequelize in their own packages; dialect packages only add locks and native clients.
+4. **No changes to core or query-layer adapters.** Keep TypeORM/Sequelize/Knex in their own packages; dialect packages only add locks and native clients.
 
 ## Benefits of This Architecture
 

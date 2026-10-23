@@ -6,7 +6,7 @@ PostgreSQL adapter for database migration locking with support for both advisory
 
 - 🔒 **Advisory Locks** - Fast, lightweight session-level locks
 - 🗄️ **Table-Based Locks** - Persistent locks using a dedicated table
-- 🔌 **Drivers** - `NodePgDriver` plus any `SqlDriver` (including TypeORM and Sequelize adapters)
+- 🔌 **Drivers** - `NodePgDriver` plus any `SqlDriver` (including TypeORM, Sequelize, and Knex adapters)
 - ⚡ **TypeScript** - Full type safety out of the box
 
 ## Installation
@@ -28,6 +28,9 @@ npm install @nodejs-db-migration-lock/typeorm typeorm
 
 # For Sequelize
 npm install @nodejs-db-migration-lock/sequelize sequelize
+
+# For Knex
+npm install @nodejs-db-migration-lock/knex knex
 ```
 
 ## Lock Strategies
