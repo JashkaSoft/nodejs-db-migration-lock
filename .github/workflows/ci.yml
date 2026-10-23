@@ -86,3 +86,13 @@ jobs:
           node-version: 26
       - name: MySQL mysql2 e2e
         run: npm run test:e2e:mysql:mysql2
+
+  e2e-mssql-tedious:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: SQL Server tedious e2e
+        run: npm run test:e2e:mssql:tedious
