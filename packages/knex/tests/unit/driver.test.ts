@@ -1,13 +1,14 @@
+import type { Knex } from 'knex';
 import { KnexDriver } from '../../src/knex-driver';
 
 class MockKnex {
-  public calls: Array<{ sql: string; params?: any[] }> = [];
+  public calls: Array<{ sql: string; params?: unknown[] }> = [];
   public nextResult: unknown = { rows: [] };
   public shouldFail = false;
   public destroyed = false;
   public transactionCalled = false;
 
-  async raw(sql: string, params?: any[]): Promise<unknown> {
+  async raw(sql: string, params?: unknown[]): Promise<unknown> {
     this.calls.push({ sql, params });
     if (this.shouldFail) {
       throw new Error('Knex query failed');
@@ -35,15 +36,15 @@ describe('KnexDriver', () => {
   });
 
   it('creates a driver with a Knex instance', () => {
-    expect(new KnexDriver(knex)).toBeDefined();
+    expect(new KnexDriver(knex as unknown as Knex)).toBeDefined();
   });
 
   it('throws without a raw function', () => {
-    expect(() => new KnexDriver({})).toThrow('KnexDriver requires a Knex instance');
+    expect(() => new KnexDriver({} as unknown as Knex)).toThrow('KnexDriver requires a Knex instance');
   });
 
   it('delegates raw queries with params', async () => {
-    const driver = new KnexDriver(knex);
+    const driver = new KnexDriver(knex as unknown as Knex);
     await driver.query('SELECT * FROM users WHERE id = $1', [1]);
     expect(knex.calls[0]).toEqual({
       sql: 'SELECT * FROM users WHERE id = ?',
@@ -52,26 +53,26 @@ describe('KnexDriver', () => {
   });
 
   it('omits params when undefined', async () => {
-    const driver = new KnexDriver(knex);
+    const driver = new KnexDriver(knex as unknown as Knex);
     await driver.query('SELECT 1');
     expect(knex.calls[0]).toEqual({ sql: 'SELECT 1', params: undefined });
   });
 
   it('returns postgres-style rows', async () => {
     knex.nextResult = { rows: [{ id: 1 }] };
-    const driver = new KnexDriver(knex);
+    const driver = new KnexDriver(knex as unknown as Knex);
     await expect(driver.query('SELECT * FROM t')).resolves.toEqual([{ id: 1 }]);
   });
 
   it('unwraps mysql row arrays', async () => {
     knex.nextResult = [[{ id: 2 }], []];
-    const driver = new KnexDriver(knex);
+    const driver = new KnexDriver(knex as unknown as Knex);
     await expect(driver.query('SELECT * FROM t')).resolves.toEqual([{ id: 2 }]);
   });
 
   it('wraps mysql result metadata as a single row', async () => {
     knex.nextResult = [{ affectedRows: 1 }, undefined];
-    const driver = new KnexDriver(knex);
+    const driver = new KnexDriver(knex as unknown as Knex);
     await expect(driver.query('INSERT IGNORE INTO t (id) VALUES (?)')).resolves.toEqual([
       { affectedRows: 1 },
     ]);
@@ -79,12 +80,12 @@ describe('KnexDriver', () => {
 
   it('propagates query errors', async () => {
     knex.shouldFail = true;
-    const driver = new KnexDriver(knex);
+    const driver = new KnexDriver(knex as unknown as Knex);
     await expect(driver.query('SELECT 1')).rejects.toThrow('Knex query failed');
   });
 
   it('runs a transaction against the trx client', async () => {
-    const driver = new KnexDriver(knex);
+    const driver = new KnexDriver(knex as unknown as Knex);
     await expect(
       driver.transaction(async () => {
         await driver.query('SELECT 1');
@@ -96,7 +97,7 @@ describe('KnexDriver', () => {
   });
 
   it('destroys the Knex instance on close', async () => {
-    const driver = new KnexDriver(knex);
+    const driver = new KnexDriver(knex as unknown as Knex);
     await driver.close();
     expect(knex.destroyed).toBe(true);
   });

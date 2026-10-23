@@ -1,23 +1,22 @@
 import { SqlDriver } from '@nodejs-db-migration-lock/core';
-
-type SequelizeInstance = any;
+import type { QueryOptions, Sequelize, Transaction } from 'sequelize';
 
 /**
  * Adapter for a Sequelize instance.
  * Database-agnostic: pair with a lock provider from postgres, mysql, or another dialect package.
  */
 export class SequelizeDriver implements SqlDriver {
-  private activeTransaction: unknown = null;
+  private activeTransaction: Transaction | null = null;
 
-  constructor(private sequelize: SequelizeInstance) {
+  constructor(private sequelize: Sequelize) {
     if (!sequelize || typeof sequelize.query !== 'function') {
       throw new Error('SequelizeDriver requires a Sequelize instance');
     }
   }
 
-  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
-    const dialect = this.sequelize.getDialect?.() ?? '';
-    const options: Record<string, unknown> = { raw: true };
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
+    const dialect = this.sequelize.getDialect();
+    const options: QueryOptions = { raw: true };
     if (this.activeTransaction) {
       options.transaction = this.activeTransaction;
     }
@@ -46,8 +45,8 @@ export class SequelizeDriver implements SqlDriver {
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {
-    return this.sequelize.transaction(async (t: unknown) => {
-      this.activeTransaction = t;
+    return this.sequelize.transaction(async (transaction) => {
+      this.activeTransaction = transaction;
       try {
         return await fn();
       } finally {

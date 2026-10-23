@@ -22,7 +22,7 @@ export class NodePgDriver implements SqlDriver {
 
   constructor(private client: PgConnection) {}
 
-  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     const connection = await this.getConnection();
     const result = await connection.query(sql, params);
     return result.rows as T[];

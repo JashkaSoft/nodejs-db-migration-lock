@@ -1,14 +1,32 @@
 import { SqlDriver } from '@nodejs-db-migration-lock/core';
-
-type SqliteDatabase = any;
-type SqliteStatement = {
-  all: (...params: any[]) => unknown;
-  run: (...params: any[]) => { changes?: number; lastInsertRowid?: number | bigint };
-};
+import type { DatabaseSync, SQLInputValue } from 'node:sqlite';
 
 function returnsRows(sql: string): boolean {
   const normalized = sql.trim().replace(/^\(+/, '').toLowerCase();
   return /^(select|pragma|with|explain|values)\b/.test(normalized);
+}
+
+function isBufferView(value: unknown): value is NodeJS.ArrayBufferView {
+  return ArrayBuffer.isView(value);
+}
+
+function toSqliteValue(value: unknown): SQLInputValue {
+  if (
+    value === null ||
+    typeof value === 'number' ||
+    typeof value === 'bigint' ||
+    typeof value === 'string' ||
+    isBufferView(value)
+  ) {
+    return value;
+  }
+  if (typeof value === 'boolean') {
+    return value ? 1 : 0;
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  throw new TypeError('Unsupported SQLite parameter');
 }
 
 function unwrapRows<T>(result: unknown): T[] {
@@ -26,18 +44,18 @@ function unwrapRows<T>(result: unknown): T[] {
  * Enables WAL and a busy timeout so concurrent processes can share one file.
  */
 export class NodeSqliteDriver implements SqlDriver {
-  constructor(private db: SqliteDatabase) {
+  constructor(private db: DatabaseSync) {
     if (!db || typeof db.prepare !== 'function') {
       throw new Error('NodeSqliteDriver requires a node:sqlite DatabaseSync');
     }
-    this.db.exec?.('PRAGMA busy_timeout = 5000');
-    this.db.exec?.('PRAGMA journal_mode = WAL');
-    this.db.exec?.('PRAGMA synchronous = NORMAL');
+    this.db.exec('PRAGMA busy_timeout = 5000');
+    this.db.exec('PRAGMA journal_mode = WAL');
+    this.db.exec('PRAGMA synchronous = NORMAL');
   }
 
-  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
-    const statement: SqliteStatement = this.db.prepare(sql);
-    const bindings = params ?? [];
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
+    const statement = this.db.prepare(sql);
+    const bindings = (params ?? []).map(toSqliteValue);
     if (returnsRows(sql)) {
       return unwrapRows<T>(statement.all(...bindings));
     }
@@ -68,8 +86,6 @@ export class NodeSqliteDriver implements SqlDriver {
   }
 
   async close(): Promise<void> {
-    if (typeof this.db.close === 'function') {
-      this.db.close();
-    }
+    this.db.close();
   }
 }

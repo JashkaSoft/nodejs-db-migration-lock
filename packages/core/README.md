@@ -26,7 +26,7 @@ An interface that abstracts database query execution. Clients implement this to 
 
 ```typescript
 interface SqlDriver {
-  query<T = any>(sql: string, params?: any[]): Promise<T[]>;
+  query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]>;
   transaction?<T>(fn: () => Promise<T>): Promise<T>;
   close?(): Promise<void>;
 }
@@ -68,7 +68,7 @@ import {
 
 // Implement your driver
 class MyDriver implements SqlDriver {
-  async query(sql: string, params?: any[]) {
+  async query(sql: string, params?: unknown[]) {
     // Your database query logic
   }
 }

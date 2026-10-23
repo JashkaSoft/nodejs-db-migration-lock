@@ -2,11 +2,11 @@ import { SqliteTableLock } from '../../src/table-lock';
 import { SqlDriver } from '@nodejs-db-migration-lock/core';
 
 class MockSqliteDriver implements SqlDriver {
-  public queries: Array<{ sql: string; params?: any[] }> = [];
+  public queries: Array<{ sql: string; params?: unknown[] }> = [];
   public insertChanges = 1;
   public shouldFail = false;
 
-  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     this.queries.push({ sql, params });
     if (this.shouldFail) {
       throw new Error('Query failed');

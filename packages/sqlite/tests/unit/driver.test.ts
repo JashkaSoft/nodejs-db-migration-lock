@@ -1,4 +1,9 @@
+import type { DatabaseSync } from 'node:sqlite';
 import { NodeSqliteDriver } from '../../src/node-sqlite-driver';
+
+function asDatabase(db: MockDatabase | Record<string, never>): DatabaseSync {
+  return db as unknown as DatabaseSync;
+}
 
 class MockStatement {
   constructor(
@@ -6,12 +11,12 @@ class MockStatement {
     private readonly sql: string,
   ) {}
 
-  all(...params: any[]) {
+  all(...params: unknown[]) {
     this.db.calls.push({ sql: this.sql, params, kind: 'all' });
     return [{ id: 1 }];
   }
 
-  run(...params: any[]) {
+  run(...params: unknown[]) {
     this.db.calls.push({ sql: this.sql, params, kind: 'run' });
     return { changes: 1, lastInsertRowid: 7 };
   }
@@ -19,7 +24,7 @@ class MockStatement {
 
 class MockDatabase {
   public execs: string[] = [];
-  public calls: Array<{ sql: string; params: any[]; kind: string }> = [];
+  public calls: Array<{ sql: string; params: unknown[]; kind: string }> = [];
   public closed = false;
 
   exec(sql: string) {
@@ -37,21 +42,21 @@ class MockDatabase {
 
 describe('NodeSqliteDriver', () => {
   it('throws without prepare', () => {
-    expect(() => new NodeSqliteDriver({})).toThrow(
+    expect(() => new NodeSqliteDriver(asDatabase({}))).toThrow(
       'NodeSqliteDriver requires a node:sqlite DatabaseSync',
     );
   });
 
   it('enables WAL and a busy timeout', () => {
     const db = new MockDatabase();
-    new NodeSqliteDriver(db);
+    new NodeSqliteDriver(asDatabase(db));
     expect(db.execs.join('\n')).toContain('busy_timeout');
     expect(db.execs.join('\n')).toContain('journal_mode = WAL');
   });
 
   it('uses all() for SELECT and run() for DML', async () => {
     const db = new MockDatabase();
-    const driver = new NodeSqliteDriver(db);
+    const driver = new NodeSqliteDriver(asDatabase(db));
     await expect(driver.query('SELECT 1')).resolves.toEqual([{ id: 1 }]);
     await expect(driver.query('INSERT OR IGNORE INTO t (id) VALUES (?)', [1])).resolves.toEqual([
       { changes: 1, affectedRows: 1, lastInsertRowid: 7 },
@@ -61,7 +66,7 @@ describe('NodeSqliteDriver', () => {
 
   it('runs BEGIN IMMEDIATE transactions', async () => {
     const db = new MockDatabase();
-    const driver = new NodeSqliteDriver(db);
+    const driver = new NodeSqliteDriver(asDatabase(db));
     await expect(driver.transaction(async () => 'ok')).resolves.toBe('ok');
     expect(db.execs).toContain('BEGIN IMMEDIATE');
     expect(db.execs).toContain('COMMIT');
@@ -69,7 +74,7 @@ describe('NodeSqliteDriver', () => {
 
   it('rolls back a failed transaction', async () => {
     const db = new MockDatabase();
-    const driver = new NodeSqliteDriver(db);
+    const driver = new NodeSqliteDriver(asDatabase(db));
     await expect(
       driver.transaction(async () => {
         throw new Error('boom');
@@ -80,7 +85,7 @@ describe('NodeSqliteDriver', () => {
 
   it('closes the database', async () => {
     const db = new MockDatabase();
-    const driver = new NodeSqliteDriver(db);
+    const driver = new NodeSqliteDriver(asDatabase(db));
     await driver.close();
     expect(db.closed).toBe(true);
   });

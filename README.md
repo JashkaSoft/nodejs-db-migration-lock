@@ -119,7 +119,7 @@ Abstracts database query execution. You implement this (or use a provided adapte
 
 ```typescript
 interface SqlDriver {
-  query<T>(sql: string, params?: any[]): Promise<T[]>;
+  query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]>;
 }
 ```
 

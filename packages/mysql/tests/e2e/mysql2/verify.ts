@@ -7,9 +7,9 @@ function add(test: string, passed: boolean, message: string): void {
   console.log(`${passed ? 'OK' : 'FAIL'} ${test}: ${message}`);
 }
 
-function asRows(result: unknown): any[] {
+function asRows(result: unknown): Array<Record<string, unknown>> {
   if (Array.isArray(result) && Array.isArray(result[0])) {
-    return result[0];
+    return result[0] as Array<Record<string, unknown>>;
   }
   return [];
 }

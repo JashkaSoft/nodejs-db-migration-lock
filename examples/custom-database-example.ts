@@ -11,6 +11,7 @@ import {
   MigrationCoordinator,
   MigrationRunner 
 } from '@nodejs-db-migration-lock/core';
+import type { QueryValues } from 'mysql2';
 import type { Pool, PoolConnection } from 'mysql2/promise';
 
 /**
@@ -18,31 +19,32 @@ import type { Pool, PoolConnection } from 'mysql2/promise';
  * Adapts mysql2 Pool to work with SqlDriver interface
  */
 class MySQLDriver implements SqlDriver {
-  constructor(private pool: Pool) {}
+  private active: Pool | PoolConnection;
 
-  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
-    const [rows] = await this.pool.query(sql, params);
+  constructor(private pool: Pool) {
+    this.active = pool;
+  }
+
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
+    const [rows] = await this.active.query(sql, params as QueryValues | undefined);
     return rows as T[];
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {
     const connection = await this.pool.getConnection();
     await connection.beginTransaction();
-    
+    const previous = this.active;
+    this.active = connection;
+
     try {
-      // Temporarily use this connection for queries
-      const originalPool = this.pool;
-      (this as any).pool = { query: connection.query.bind(connection) };
-      
       const result = await fn();
       await connection.commit();
-      
-      (this as any).pool = originalPool;
       return result;
     } catch (error) {
       await connection.rollback();
       throw error;
     } finally {
+      this.active = previous;
       connection.release();
     }
   }
@@ -122,9 +124,9 @@ class MySQLTableLock implements LockProvider {
         [this.lockId],
       );
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Duplicate entry error means lock is held
-      if (error.code === 'ER_DUP_ENTRY') {
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ER_DUP_ENTRY') {
         return false;
       }
       throw error;

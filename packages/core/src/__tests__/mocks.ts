@@ -8,12 +8,12 @@ import { SqlDriver, LockProvider, MigrationRunner } from '../interfaces';
  * Mock SqlDriver for testing
  */
 export class MockSqlDriver implements SqlDriver {
-  public queries: Array<{ sql: string; params?: any[] }> = [];
-  public queryResults: Map<string, any[]> = new Map();
+  public queries: Array<{ sql: string; params?: unknown[] }> = [];
+  public queryResults: Map<string, unknown[]> = new Map();
   public shouldFail = false;
   public failureError = new Error('Query failed');
 
-  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     this.queries.push({ sql, params });
     
     if (this.shouldFail) {
@@ -33,11 +33,11 @@ export class MockSqlDriver implements SqlDriver {
   }
 
   // Helper methods
-  mockQueryResult(sql: string, result: any[]): void {
+  mockQueryResult(sql: string, result: unknown[]): void {
     this.queryResults.set(this.normalizeQuery(sql), result);
   }
 
-  getLastQuery(): { sql: string; params?: any[] } | undefined {
+  getLastQuery(): { sql: string; params?: unknown[] } | undefined {
     return this.queries[this.queries.length - 1];
   }
 

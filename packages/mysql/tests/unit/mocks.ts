@@ -1,12 +1,12 @@
 import { SqlDriver } from '@nodejs-db-migration-lock/core';
 
 export class MockMysqlDriver implements SqlDriver {
-  public queries: Array<{ sql: string; params?: any[] }> = [];
+  public queries: Array<{ sql: string; params?: unknown[] }> = [];
   public shouldFail = false;
   public acquireResult: unknown = 1;
   public insertAffectedRows = 1;
 
-  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     this.queries.push({ sql, params });
     if (this.shouldFail) {
       throw new Error('Query failed');
@@ -30,17 +30,17 @@ export class MockMysqlDriver implements SqlDriver {
 }
 
 export class MockMysqlPool {
-  public queries: Array<{ sql: string; params?: any[] }> = [];
+  public queries: Array<{ sql: string; params?: unknown[] }> = [];
   public ended = false;
 
-  async query(sql: string, params?: any[]) {
+  async query(sql: string, params?: unknown[]) {
     this.queries.push({ sql, params });
     return [[{ ok: true }], []];
   }
 
   async getConnection() {
     return {
-      query: async (sql: string, params?: any[]) => {
+      query: async (sql: string, params?: unknown[]) => {
         this.queries.push({ sql, params });
         return [[{ ok: true }], []];
       },

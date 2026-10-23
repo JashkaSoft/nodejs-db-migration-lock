@@ -8,12 +8,12 @@ import { SqlDriver } from '@nodejs-db-migration-lock/core';
  * Mock SQL Driver that simulates PostgreSQL behavior
  */
 export class MockPostgresDriver implements SqlDriver {
-  public queries: Array<{ sql: string; params?: any[] }> = [];
-  private results: Map<string, any[]> = new Map();
+  public queries: Array<{ sql: string; params?: unknown[] }> = [];
+  private results: Map<string, unknown[]> = new Map();
   public shouldFail = false;
   public failureError = new Error('Query failed');
 
-  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     this.queries.push({ sql, params });
 
     if (this.shouldFail) {
@@ -25,17 +25,17 @@ export class MockPostgresDriver implements SqlDriver {
 
     // pg_try_advisory_lock
     if (normalizedSql.includes('pg_try_advisory_lock')) {
-      return this.results.get('advisory_lock') || [{ pg_try_advisory_lock: true }] as T[];
+      return (this.results.get('advisory_lock') ?? [{ pg_try_advisory_lock: true }]) as T[];
     }
 
     // pg_advisory_unlock
     if (normalizedSql.includes('pg_advisory_unlock')) {
-      return this.results.get('advisory_unlock') || [{ pg_advisory_unlock: true }] as T[];
+      return (this.results.get('advisory_unlock') ?? [{ pg_advisory_unlock: true }]) as T[];
     }
 
     // Table existence check
     if (normalizedSql.includes('information_schema.tables')) {
-      return this.results.get('table_exists') || [{ exists: false }] as T[];
+      return (this.results.get('table_exists') ?? [{ exists: false }]) as T[];
     }
 
     // Sequence check
@@ -55,7 +55,7 @@ export class MockPostgresDriver implements SqlDriver {
 
     // INSERT with RETURNING
     if (normalizedSql.includes('insert') && normalizedSql.includes('returning')) {
-      return this.results.get('insert') || [{ id: 1 }] as T[];
+      return (this.results.get('insert') ?? [{ id: 1 }]) as T[];
     }
 
     // DELETE
@@ -69,7 +69,7 @@ export class MockPostgresDriver implements SqlDriver {
     }
 
     // Default
-    return this.results.get('default') || [] as T[];
+    return (this.results.get('default') ?? []) as T[];
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {
@@ -81,7 +81,7 @@ export class MockPostgresDriver implements SqlDriver {
   }
 
   // Helper methods
-  mockResult(key: string, result: any[]): void {
+  mockResult(key: string, result: unknown[]): void {
     this.results.set(key, result);
   }
 
@@ -97,11 +97,11 @@ export class MockPostgresDriver implements SqlDriver {
     this.results.set('insert', success ? [{ id: 1 }] : []);
   }
 
-  getLastQuery(): { sql: string; params?: any[] } | undefined {
+  getLastQuery(): { sql: string; params?: unknown[] } | undefined {
     return this.queries[this.queries.length - 1];
   }
 
-  getQueriesContaining(text: string): Array<{ sql: string; params?: any[] }> {
+  getQueriesContaining(text: string): Array<{ sql: string; params?: unknown[] }> {
     return this.queries.filter(q => this.normalizeSql(q.sql).includes(text.toLowerCase()));
   }
 
@@ -120,12 +120,12 @@ export class MockPostgresDriver implements SqlDriver {
  * Mock pg Pool for testing NodePgDriver
  */
 export class MockPgPool {
-  public queries: Array<{ sql: string; params?: any[] }> = [];
+  public queries: Array<{ sql: string; params?: unknown[] }> = [];
   public shouldFail = false;
   public failureError = new Error('Pool query failed');
-  private results: Map<string, any> = new Map();
+  private results: Map<string, unknown[]> = new Map();
 
-  async query(sql: string, params?: any[]): Promise<{ rows: any[] }> {
+  async query(sql: string, params?: unknown[]): Promise<{ rows: unknown[] }> {
     this.queries.push({ sql, params });
 
     if (this.shouldFail) {
@@ -145,7 +145,7 @@ export class MockPgPool {
     // Mock end
   }
 
-  mockResult(sql: string, rows: any[]): void {
+  mockResult(sql: string, rows: unknown[]): void {
     this.results.set(this.normalizeSql(sql), rows);
   }
 
@@ -158,11 +158,11 @@ export class MockPgPool {
  * Mock pg Client for testing NodePgDriver
  */
 export class MockPgClient {
-  public queries: Array<{ sql: string; params?: any[] }> = [];
+  public queries: Array<{ sql: string; params?: unknown[] }> = [];
   public shouldFail = false;
   public released = false;
 
-  async query(sql: string, params?: any[]): Promise<{ rows: any[] }> {
+  async query(sql: string, params?: unknown[]): Promise<{ rows: unknown[] }> {
     this.queries.push({ sql, params });
 
     if (this.shouldFail) {

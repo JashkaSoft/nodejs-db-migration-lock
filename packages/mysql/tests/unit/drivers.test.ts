@@ -1,3 +1,4 @@
+import type { Pool } from 'mysql2/promise';
 import { Mysql2Driver } from '../../src/mysql2-driver';
 
 describe('Mysql2Driver', () => {
@@ -25,7 +26,7 @@ describe('Mysql2Driver', () => {
       },
     };
 
-    const driver = new Mysql2Driver(pool as any);
+    const driver = new Mysql2Driver(pool as unknown as Pool);
     await driver.query('SELECT 1');
     await driver.query('SELECT 2');
     expect(session.queries).toEqual(['SELECT 1', 'SELECT 2']);
