@@ -12,6 +12,7 @@ COPY packages/postgres/package.json packages/postgres/tsconfig.json ./packages/p
 COPY packages/mysql/package.json packages/mysql/tsconfig.json ./packages/mysql/
 COPY packages/typeorm/package.json packages/typeorm/tsconfig.json ./packages/typeorm/
 COPY packages/sequelize/package.json packages/sequelize/tsconfig.json ./packages/sequelize/
+COPY packages/knex/package.json packages/knex/tsconfig.json ./packages/knex/
 
 RUN npm install
 
@@ -20,6 +21,7 @@ COPY packages/postgres/src ./packages/postgres/src
 COPY packages/mysql/src ./packages/mysql/src
 COPY packages/typeorm/src ./packages/typeorm/src
 COPY packages/sequelize/src ./packages/sequelize/src
+COPY packages/knex/src ./packages/knex/src
 
 RUN npm run build
 
