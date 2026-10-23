@@ -1,12 +1,14 @@
 import { SqlDriver } from '@nodejs-db-migration-lock/core';
-import type { DataSource, EntityManager } from 'typeorm';
+import type { DataSource, QueryRunner } from 'typeorm';
 
 /**
  * Adapter for a TypeORM DataSource.
- * Database-agnostic: pair with a lock provider from postgres, mysql, or another dialect package.
+ * Checks out one QueryRunner for the driver lifetime so session locks stay
+ * on a single connection. Migration runners keep using the DataSource pool.
  */
 export class TypeORMDriver implements SqlDriver {
-  private queryWith: (sql: string, params?: unknown[]) => Promise<unknown>;
+  private runner: QueryRunner | null = null;
+  private connecting: Promise<QueryRunner | null> | null = null;
 
   constructor(private dataSource: DataSource) {
     if (!dataSource.isInitialized) {
@@ -14,35 +16,70 @@ export class TypeORMDriver implements SqlDriver {
         'TypeORM DataSource must be initialized before use with TypeORMDriver',
       );
     }
-    this.queryWith = (sql, params) => dataSource.query(sql, params);
   }
 
   async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
-    const result = await this.queryWith(sql, params);
-    if (Array.isArray(result)) {
-      return result as T[];
-    }
-    if (result && typeof result === 'object') {
-      return [result as T];
-    }
-    return [];
+    const runner = await this.getRunner();
+    const result = runner
+      ? await runner.query(sql, params)
+      : await this.dataSource.query(sql, params);
+    return asRows<T>(result);
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {
-    return this.dataSource.transaction(async (manager: EntityManager) => {
-      const previous = this.queryWith;
-      this.queryWith = (sql, params) => manager.query(sql, params);
-      try {
-        return await fn();
-      } finally {
-        this.queryWith = previous;
-      }
-    });
+    const runner = await this.getRunner();
+    if (!runner) {
+      return this.dataSource.transaction(async () => fn());
+    }
+
+    await runner.startTransaction();
+    try {
+      const result = await fn();
+      await runner.commitTransaction();
+      return result;
+    } catch (error) {
+      await runner.rollbackTransaction();
+      throw error;
+    }
   }
 
   async close(): Promise<void> {
+    if (this.runner && !this.runner.isReleased) {
+      await this.runner.release();
+      this.runner = null;
+    }
     if (this.dataSource.isInitialized) {
       await this.dataSource.destroy();
     }
   }
+
+  private async getRunner(): Promise<QueryRunner | null> {
+    if (typeof this.dataSource.createQueryRunner !== 'function') {
+      return null;
+    }
+    if (this.runner && !this.runner.isReleased) {
+      return this.runner;
+    }
+    if (!this.connecting) {
+      this.connecting = (async () => {
+        const runner = this.dataSource.createQueryRunner();
+        await runner.connect();
+        this.runner = runner;
+        return runner;
+      })().finally(() => {
+        this.connecting = null;
+      });
+    }
+    return this.connecting;
+  }
+}
+
+function asRows<T>(result: unknown): T[] {
+  if (Array.isArray(result)) {
+    return result as T[];
+  }
+  if (result && typeof result === 'object') {
+    return [result as T];
+  }
+  return [];
 }
