@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: docker.io/library/mysql:9.7
+    environment:
+      MYSQL_ROOT_PASSWORD: testpass
+      MYSQL_DATABASE: migration_test
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -utestuser -ptestpass --silent"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    networks:
+      - migration-net
+
+  migrator-1:
+    image: nodejs-db-migration-lock-e2e-sequelize-mysql:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/sequelize/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: mysql
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+      MYSQL_DB: migration_test
+      PROCESS_ID: "1"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - migration-net
+    command: ["node", "dist/migrate.js"]
+
+  migrator-2:
+    image: nodejs-db-migration-lock-e2e-sequelize-mysql:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/sequelize/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: mysql
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+      MYSQL_DB: migration_test
+      PROCESS_ID: "2"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - migration-net
+    command: ["node", "dist/migrate.js"]
+
+  migrator-3:
+    image: nodejs-db-migration-lock-e2e-sequelize-mysql:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/sequelize/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: mysql
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+      MYSQL_DB: migration_test
+      PROCESS_ID: "3"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - migration-net
+    command: ["node", "dist/migrate.js"]
+
+  test-runner:
+    image: nodejs-db-migration-lock-e2e-sequelize-mysql:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/sequelize/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: mysql
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+      MYSQL_DB: migration_test
+      EXPECTED_PROCESSES: "3"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - migration-net
+    command: ["node", "dist/verify.js"]
+
+networks:
+  migration-net:
+    driver: bridge
