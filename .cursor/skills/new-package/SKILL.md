@@ -35,7 +35,7 @@ Do not create Next.js unless the user asked for Next.js. Replica examples are Ne
 
 Clone `packages/postgres/tests/e2e` (SQL server) or `packages/sqlite/tests/e2e` (file DB).
 
-- Suite dir `tests/e2e/<suite>/`: `migrate.ts`, `verify.ts`, `docker-compose.yml`, `package.json` (`file:../../../../<deps>`), `tsconfig.json`.
+- Suite dir `tests/e2e/<suite>/`: `migrate.ts`, `docker-compose.yml`, `package.json` (`file:../../../../<deps>`), `tsconfig.json`. Only a dialect suite contains `verify.ts`. An ORM `test-runner` uses that dialect image (`packages/postgres/tests/e2e/Dockerfile` or `packages/mysql/tests/e2e/Dockerfile`) and `node dist/verify.js`. Do not copy `verify.ts` into the ORM image.
 - Shared `tests/e2e/Dockerfile` + `run-test.sh`. `COMPOSE_PROJECT_NAME=migration-lock-<pkg>-<suite>`.
 - Three migrators + `test-runner`. Images: `docker.io/library/node:26-alpine` and current DB images. Prefer `podman-compose`.
 - **COPY only packages the image imports.** Root `workspaces` glob does **not** require sibling folders. See [docker-workspace-copy](../../rules/docker-workspace-copy.mdc).
