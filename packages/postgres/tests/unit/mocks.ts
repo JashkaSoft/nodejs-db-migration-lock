@@ -23,9 +23,28 @@ export class MockPostgresDriver implements SqlDriver {
     // Simulate PostgreSQL responses
     const normalizedSql = this.normalizeSql(sql);
 
+    if (normalizedSql.includes('current_database')) {
+      return (this.results.get('current_database') ?? [{ name: 'appdb' }]) as T[];
+    }
+
+    if (normalizedSql.includes('pg_try_advisory_xact_lock')) {
+      return (this.results.get('advisory_lock') ?? [{ acquired: true }]) as T[];
+    }
+
     // pg_try_advisory_lock
     if (normalizedSql.includes('pg_try_advisory_lock')) {
       return (this.results.get('advisory_lock') ?? [{ pg_try_advisory_lock: true }]) as T[];
+    }
+
+    if (
+      normalizedSql.includes('pg_advisory_lock') ||
+      normalizedSql.includes('pg_advisory_xact_lock')
+    ) {
+      const blocked = this.results.get('advisory_block_error');
+      if (blocked) {
+        throw blocked[0];
+      }
+      return (this.results.get('advisory_lock_block') ?? []) as T[];
     }
 
     // pg_advisory_unlock

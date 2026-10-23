@@ -2,6 +2,7 @@
  * Unit tests for PostgresAdvisoryLock
  */
 
+import { postgresAdvisoryKey } from '@nodejs-db-migration-lock/core';
 import { PostgresAdvisoryLock } from '../../src/advisory-lock';
 import { MockPostgresDriver } from './mocks';
 
@@ -48,13 +49,44 @@ describe('PostgresAdvisoryLock', () => {
       expect(acquired).toBe(false);
     });
 
-    it('should use default lock ID', async () => {
+    it('derives the lock key from the current database', async () => {
       driver.mockAdvisoryLock(true);
       const lock = new PostgresAdvisoryLock();
 
       await lock.acquire(driver);
 
-      expect(driver.queries[0].params?.[0]).toBe(123456789); // Default ID
+      const tryLock = driver.queries.find((query) => query.sql.includes('pg_try_advisory_lock'));
+      expect(tryLock?.params).toEqual([postgresAdvisoryKey('appdb')]);
+    });
+
+    it('blocks in the database when a timeout is provided', async () => {
+      const lock = new PostgresAdvisoryLock({ lockId: 42 });
+
+      await expect(lock.acquire(driver, { timeoutMs: 1500 })).resolves.toBe(true);
+
+      const sql = driver.queries.map((query) => query.sql).join('\n');
+      expect(sql).toContain('set_config');
+      expect(sql).toContain('pg_advisory_lock');
+      expect(sql).not.toContain('pg_try_advisory_lock');
+    });
+
+    it('returns false when Postgres reports a lock timeout', async () => {
+      const error = new Error('canceling statement due to lock timeout') as Error & { code: string };
+      error.code = '55P03';
+      driver.mockResult('advisory_block_error', [error]);
+      const lock = new PostgresAdvisoryLock({ lockId: 42 });
+
+      await expect(lock.acquire(driver, { timeoutMs: 10 })).resolves.toBe(false);
+    });
+
+    it('uses a transaction advisory lock when scope is transaction', async () => {
+      const lock = new PostgresAdvisoryLock({ lockId: 7, scope: 'transaction', wait: 'poll' });
+
+      await expect(lock.acquire(driver)).resolves.toBe(true);
+      expect(driver.queries[0].sql).toContain('pg_try_advisory_xact_lock');
+
+      await lock.release(driver);
+      expect(driver.queries).toHaveLength(1);
     });
 
     it('should return false if signal is aborted', async () => {

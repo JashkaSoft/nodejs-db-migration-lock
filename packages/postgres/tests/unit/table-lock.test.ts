@@ -44,12 +44,10 @@ describe('PostgresTableLock', () => {
       
       // Should check table existence
       expect(queries.some(q => q.includes('information_schema.tables'))).toBe(true);
-      
-      // Should create sequence
-      expect(queries.some(q => q.includes('create sequence'))).toBe(true);
-      
-      // Should create table
+
+      // Should create the lease table
       expect(queries.some(q => q.includes('create table'))).toBe(true);
+      expect(queries.some(q => q.includes('holder'))).toBe(true);
       
       // Should release advisory lock
       expect(queries.some(q => q.includes('pg_advisory_unlock'))).toBe(true);
@@ -75,7 +73,7 @@ describe('PostgresTableLock', () => {
       let callCount = 0;
       driver.query = async (sql: string, params?: unknown[]) => {
         callCount++;
-        if (callCount === 3) { // Fail on sequence creation
+        if (callCount === 3) { // Fail on table creation
           throw new Error('Simulated error');
         }
         return originalQuery(sql, params);
@@ -171,7 +169,9 @@ describe('PostgresTableLock', () => {
       );
       
       expect(insertQuery?.sql).toContain('custom_lock');
-      expect(insertQuery?.params).toEqual([42]);
+      expect(insertQuery?.params?.[0]).toBe(42);
+      expect(insertQuery?.params?.[1]).toBe(lock.holder);
+      expect(insertQuery?.sql).toContain('expires_at');
     });
   });
 
@@ -187,7 +187,9 @@ describe('PostgresTableLock', () => {
       
       expect(deleteQuery).toBeDefined();
       expect(deleteQuery?.sql).toContain('migration_lock');
-      expect(deleteQuery?.params).toEqual([1]);
+      expect(deleteQuery?.params?.[0]).toBe(1);
+      expect(deleteQuery?.params?.[1]).toBe(lock.holder);
+      expect(deleteQuery?.sql).toContain('holder');
     });
 
     it('should use custom table name and lock ID', async () => {
@@ -201,7 +203,8 @@ describe('PostgresTableLock', () => {
       const deleteQuery = driver.queries[0];
       
       expect(deleteQuery.sql).toContain('my_lock_table');
-      expect(deleteQuery.params).toEqual([99]);
+      expect(deleteQuery.params?.[0]).toBe(99);
+      expect(deleteQuery.params?.[1]).toBe(lock.holder);
     });
   });
 

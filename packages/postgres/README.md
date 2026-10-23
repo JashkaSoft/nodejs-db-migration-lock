@@ -62,7 +62,7 @@ Uses a dedicated table with a fixed ID to ensure only one lock exists.
 - Slightly slower (involves table I/O)
 - Needs manual cleanup if process crashes
 
-On first use it creates `migration_lock` (or `tableName`) and `{tableName}_id_seq`. That needs `CREATE` on the schema unless an admin pre-creates them. Advisory locks create no objects.
+On first use the table lock creates `migration_lock` (or `tableName`) with `holder`, `locked_at`, and `expires_at`. That needs `CREATE` on the schema unless an admin pre-creates the table. Advisory locks create no objects. Omit `lockId` and the advisory key is derived from `current_database()`.
 
 ## Usage
 

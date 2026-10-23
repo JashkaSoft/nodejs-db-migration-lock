@@ -102,17 +102,35 @@ class TestPostgresDriver implements SqlDriver {
   async query<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
     const normalizedSql = sql.toLowerCase().trim();
 
+    if (normalizedSql.includes('current_database')) {
+      return [{ name: 'appdb' }] as T[];
+    }
+
+    if (normalizedSql.includes('set_config')) {
+      return [] as T[];
+    }
+
     // Advisory lock operations
-    if (normalizedSql.includes('pg_try_advisory_lock')) {
+    if (normalizedSql.includes('pg_try_advisory')) {
       const lockId = asNumber(params[0]);
       const success = this.db.tryAdvisoryLock(lockId);
-      return [{ pg_try_advisory_lock: success }] as T[];
+      return [{ pg_try_advisory_lock: success, acquired: success }] as T[];
     }
 
     if (normalizedSql.includes('pg_advisory_unlock')) {
       const lockId = asNumber(params[0]);
       const success = this.db.advisoryUnlock(lockId);
       return [{ pg_advisory_unlock: success }] as T[];
+    }
+
+    if (normalizedSql.includes('pg_advisory_lock') || normalizedSql.includes('pg_advisory_xact_lock')) {
+      const lockId = asNumber(params[0]);
+      if (!this.db.tryAdvisoryLock(lockId)) {
+        const error = new Error('canceling statement due to lock timeout') as Error & { code: string };
+        error.code = '55P03';
+        throw error;
+      }
+      return [] as T[];
     }
 
     // Table existence check
@@ -124,7 +142,7 @@ class TestPostgresDriver implements SqlDriver {
 
     // Create table
     if (normalizedSql.includes('create table')) {
-      const match = sql.match(/create table (?:if not exists )?(\w+)/i);
+      const match = sql.match(/create table (?:if not exists )?"?([A-Za-z_][A-Za-z0-9_]*)"?/i);
       if (match) {
         this.db.createTable(match[1]);
       }
@@ -143,20 +161,30 @@ class TestPostgresDriver implements SqlDriver {
 
     // Insert with conflict handling
     if (normalizedSql.includes('insert')) {
-      const tableName = 'migration_lock'; // Assuming this table
+      const tableMatch = sql.match(/into\s+"?([A-Za-z_][A-Za-z0-9_]*)"?/i);
+      const tableName = tableMatch?.[1] ?? 'migration_lock';
       const lockId = asNumber(params[0]);
-      const inserted = this.db.insertRow(tableName, lockId, { created_at: new Date() });
-      
-      if (inserted) {
-        return [{ id: lockId }] as T[];
+      const now = typeof params[2] === 'number' ? params[2] : Date.now();
+      const existing = this.db.getRow(tableName, lockId);
+      if (existing && Number(existing.expires_at ?? Number.POSITIVE_INFINITY) >= now) {
+        return [] as T[];
       }
-      return [] as T[]; // Conflict
+      this.db.deleteRow(tableName, lockId);
+      const holder = typeof params[1] === 'string' ? params[1] : undefined;
+      const expiresAt = typeof params[3] === 'number' ? params[3] : now + 30_000;
+      this.db.insertRow(tableName, lockId, { holder, expires_at: expiresAt });
+      return [{ id: lockId }] as T[];
     }
 
-    // Delete
     if (normalizedSql.includes('delete')) {
-      const tableName = 'migration_lock';
+      const tableMatch = sql.match(/from\s+"?([A-Za-z_][A-Za-z0-9_]*)"?/i);
+      const tableName = tableMatch?.[1] ?? 'migration_lock';
       const lockId = asNumber(params[0]);
+      const holder = params[1];
+      const row = this.db.getRow(tableName, lockId);
+      if (typeof holder === 'string' && row?.holder && row.holder !== holder) {
+        return [] as T[];
+      }
       this.db.deleteRow(tableName, lockId);
       return [] as T[];
     }
@@ -167,6 +195,10 @@ class TestPostgresDriver implements SqlDriver {
     }
 
     return [] as T[];
+  }
+
+  async transaction<T>(fn: () => Promise<T>): Promise<T> {
+    return fn();
   }
 }
 
@@ -246,16 +278,34 @@ describe('Integration Tests - PostgreSQL', () => {
         },
       });
 
-      // Run both concurrently
+      let active = 0;
+      let maxActive = 0;
+      const watch = (runner: TestMigrationRunner) => {
+        const run = runner.run.bind(runner);
+        runner.run = async () => {
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          try {
+            await run();
+          } finally {
+            active -= 1;
+          }
+        };
+      };
+      watch(runner1);
+      watch(runner2);
+
       const [result1, result2] = await Promise.allSettled([
         coordinator1.migrate(),
         coordinator2.migrate(),
       ]);
 
       expect(result1.status).toBe('fulfilled');
-      expect(result2.status).toBe('rejected'); // Failed to acquire lock
+      expect(result2.status).toBe('fulfilled');
+      expect(maxActive).toBe(1);
       expect(runner1.executed).toBe(true);
-      expect(runner2.executed).toBe(false);
+      expect(runner2.executed).toBe(true);
+      expect(db.isAdvisoryLocked(99999)).toBe(false);
     });
 
     it('should allow sequential execution after lock release', async () => {
@@ -336,16 +386,33 @@ describe('Integration Tests - PostgreSQL', () => {
         },
       });
 
-      // Run concurrently
+      let active = 0;
+      let maxActive = 0;
+      const watch = (runner: TestMigrationRunner) => {
+        const run = runner.run.bind(runner);
+        runner.run = async () => {
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          try {
+            await run();
+          } finally {
+            active -= 1;
+          }
+        };
+      };
+      watch(runner1);
+      watch(runner2);
+
       const [result1, result2] = await Promise.allSettled([
         coordinator1.migrate(),
         coordinator2.migrate(),
       ]);
 
       expect(result1.status).toBe('fulfilled');
-      expect(result2.status).toBe('rejected');
+      expect(result2.status).toBe('fulfilled');
+      expect(maxActive).toBe(1);
       expect(runner1.executed).toBe(true);
-      expect(runner2.executed).toBe(false);
+      expect(runner2.executed).toBe(true);
     });
 
     it('should handle infrastructure setup', async () => {
@@ -423,18 +490,12 @@ describe('Integration Tests - PostgreSQL', () => {
 
       const lockProvider1 = new PostgresTableLock({ lockId: 1 });
       const lockProvider2 = new PostgresTableLock({ lockId: 1 });
-
-      const runner1 = new TestMigrationRunner();
       const runner2 = new TestMigrationRunner();
 
-      const coordinator1 = new MigrationCoordinator({
-        driver: driver1,
-        lockProvider: lockProvider1,
-        migrationRunner: runner1,
-      });
+      await lockProvider1.ensureInfrastructure(driver1);
+      db.insertRow('migration_lock', 1, { holder: 'other', expires_at: Date.now() + 60_000 });
 
       const onLockWaiting = jest.fn();
-
       const coordinator2 = new MigrationCoordinator({
         driver: driver2,
         lockProvider: lockProvider2,
@@ -446,15 +507,9 @@ describe('Integration Tests - PostgreSQL', () => {
         onLockWaiting,
       });
 
-      // Acquire first lock
-      const migrate1 = coordinator1.migrate();
-      
-      // Try to acquire second (will retry)
-      const migrate2 = coordinator2.migrate().catch(() => {});
-
-      await Promise.all([migrate1, migrate2]);
-
+      await expect(coordinator2.migrate()).rejects.toThrow();
       expect(onLockWaiting.mock.calls.length).toBeGreaterThan(0);
+      expect(runner2.executed).toBe(false);
     });
   });
 
@@ -528,16 +583,10 @@ describe('Integration Tests - PostgreSQL', () => {
         coordinator3.migrate(),
       ]);
 
-      // At least one should succeed
       const succeeded = migrations.filter(r => r.status === 'fulfilled');
-      const failed = migrations.filter(r => r.status === 'rejected');
-
-      expect(succeeded.length).toBeGreaterThanOrEqual(1);
-      expect(succeeded.length).toBeLessThanOrEqual(3);
-      
-      // The number of processes that acquired should match succeeded
-      expect(results.filter(r => r.includes('acquired'))).toHaveLength(succeeded.length);
-      expect(results.filter(r => r.includes('complete'))).toHaveLength(succeeded.length);
+      expect(succeeded).toHaveLength(3);
+      expect(results.filter(r => r.includes('acquired'))).toHaveLength(3);
+      expect(results.filter(r => r.includes('complete'))).toHaveLength(3);
     });
   });
 
