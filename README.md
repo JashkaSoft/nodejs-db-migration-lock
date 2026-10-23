@@ -28,6 +28,7 @@ This is a monorepo containing multiple packages:
 | [@nodejs-db-migration-lock/postgres](./packages/postgres) | PostgreSQL adapter with advisory and table locks | 0.1.0 |
 | [@nodejs-db-migration-lock/mysql](./packages/mysql) | MySQL/MariaDB adapter (`GET_LOCK` + table lock) | 0.1.0 |
 | [@nodejs-db-migration-lock/typeorm](./packages/typeorm) | TypeORM `DataSource` driver (DB-agnostic) | 0.1.0 |
+| [@nodejs-db-migration-lock/sequelize](./packages/sequelize) | Sequelize driver (DB-agnostic) | 0.1.0 |
 | `@nodejs-db-migration-lock/sqlite` | SQLite adapter | Coming soon |
 
 ## 🚀 Quick Start
@@ -45,6 +46,9 @@ npm install mysql2
 
 # TypeORM (any supported database)
 npm install @nodejs-db-migration-lock/typeorm typeorm
+
+# Sequelize (any supported database)
+npm install @nodejs-db-migration-lock/sequelize sequelize
 ```
 
 ### Basic Usage with TypeORM
@@ -139,6 +143,7 @@ The `MigrationCoordinator` orchestrates these three pieces with retry logic, err
 - [PostgreSQL Package Documentation](./packages/postgres/README.md)
 - [MySQL Package Documentation](./packages/mysql/README.md)
 - [TypeORM Package Documentation](./packages/typeorm/README.md)
+- [Sequelize Package Documentation](./packages/sequelize/README.md)
 - [Examples](./examples)
 
 ## 🔍 Use Cases
@@ -231,6 +236,8 @@ npm run test:e2e:postgres:node-pg
 npm run test:e2e:mysql:mysql2
 npm run test:e2e:typeorm:postgres
 npm run test:e2e:typeorm:mysql
+npm run test:e2e:sequelize:postgres
+npm run test:e2e:sequelize:mysql
 ```
 
 SQLite is still out of scope. Multi-replica apps live in [`examples/`](./examples) (NestJS/Express/Fastify + TypeORM, NestJS + Sequelize) against Postgres and MySQL.

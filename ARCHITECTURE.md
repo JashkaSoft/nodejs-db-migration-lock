@@ -139,6 +139,11 @@ const driver = new MyCustomDriver(myClient);
 - `TypeORMDriver` - wraps a TypeORM `DataSource`
 - Pair with a dialect lock package (`postgres`, `mysql`, …)
 
+### @nodejs-db-migration-lock/sequelize
+**ORM adapter (database-agnostic)**
+- `SequelizeDriver` - wraps a Sequelize instance
+- Pair with a dialect lock package (`postgres`, `mysql`, …)
+
 ### Other packages
 - `@nodejs-db-migration-lock/mysql` - MySQL/MariaDB locks + `Mysql2Driver`
 - `@nodejs-db-migration-lock/sqlite` - SQLite support (planned)
@@ -291,7 +296,7 @@ class MySQLTableLock implements LockProvider {
 }
 ```
 
-4. **No changes to core or TypeORM.** Keep ORM adapters in `@nodejs-db-migration-lock/typeorm`; dialect packages only add locks and native clients.
+4. **No changes to core or ORM adapters.** Keep TypeORM/Sequelize in their own packages; dialect packages only add locks and native clients.
 
 ## Benefits of This Architecture
 
