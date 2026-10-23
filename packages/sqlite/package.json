@@ -1,0 +1,50 @@
+{
+  "name": "@nodejs-db-migration-lock/sqlite",
+  "version": "0.1.0",
+  "description": "SQLite adapter for database migration locking",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "jest --config tests/jest.config.unit.js",
+    "test:unit": "jest --config tests/jest.config.unit.js",
+    "test:e2e": "./tests/e2e/run-test.sh node-sqlite",
+    "test:e2e:node-sqlite": "./tests/e2e/run-test.sh node-sqlite",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "database",
+    "migration",
+    "lock",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/nodejs-db-migration-lock.git",
+    "directory": "packages/sqlite"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "@types/node": "^26.6.5",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "jest": "30.5.2",
+    "ts-jest": "29.4.15",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
+  },
+  "engines": {
+    "node": ">=24.15.0"
+  }
+}
