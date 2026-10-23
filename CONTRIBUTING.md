@@ -26,7 +26,8 @@ nodejs-db-migration-lock/
 │   │
 │   ├── postgres/          # PostgreSQL locks + NodePgDriver
 │   ├── mysql/             # MySQL locks + Mysql2Driver
-│   └── typeorm/           # TypeORM DataSource adapter (DB-agnostic)
+│   ├── typeorm/           # TypeORM DataSource adapter (DB-agnostic)
+│   └── sequelize/         # Sequelize adapter (DB-agnostic)
 │
 ├── examples/              # Usage examples
 └── README.md
@@ -64,7 +65,7 @@ CI runs unit tests and the Postgres e2e suite on GitHub Actions.
 
 ## 📝 Adding Support for a New Database
 
-Here's a step-by-step guide to add support for a new database (e.g., MySQL). Add lock providers and a native client driver only. Do not copy TypeORM into the dialect package — use `@nodejs-db-migration-lock/typeorm`.
+Here's a step-by-step guide to add support for a new database (e.g., MySQL). Add lock providers and a native client driver only. Do not copy TypeORM or Sequelize into the dialect package — use `@nodejs-db-migration-lock/typeorm` or `@nodejs-db-migration-lock/sequelize`.
 
 ### 1. Create Package Structure
 

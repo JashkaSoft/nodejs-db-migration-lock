@@ -2,7 +2,7 @@
 
 Startup runs **Umzug** (Sequelize migrations) behind `MigrationCoordinator`. Three replicas race Postgres **and** MySQL; only one holds the lock.
 
-There is no `@nodejs-db-migration-lock/sequelize` package. `SequelizeDriver` in this example implements `SqlDriver` around `sequelize.query()`.
+Uses `@nodejs-db-migration-lock/sequelize` (`SequelizeDriver`) with Umzug behind `MigrationCoordinator`.
 
 ```bash
 cd examples/nestjs-sequelize
