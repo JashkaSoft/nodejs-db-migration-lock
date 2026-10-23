@@ -251,6 +251,54 @@ ORM drivers (`TypeORMDriver`, `SequelizeDriver`, `KnexDriver`) check out one poo
 
 Advisory strategies need no extra DDL privileges. Table strategies only create the lock objects above — not your application schema. If the app user cannot create tables, create those objects in a migration/admin step and keep using the same `tableName`.
 
+## Long migrations
+
+An advisory lock stays held for the whole run, including a migration that takes many minutes. Raise `timeoutMs` above that duration so the other replicas wait instead of failing:
+
+```typescript
+const coordinator = new MigrationCoordinator({
+  driver,
+  lockProvider: new PostgresAdvisoryLock(), // or MySQLAdvisoryLock / MssqlAppLock
+  migrationRunner,
+  retryConfig: { timeoutMs: 30 * 60 * 1000 },
+});
+```
+
+`MySQLAdvisoryLock` and `MssqlAppLock` use the same `timeoutMs`. `wait: 'database'` is the default: one blocking call inside the database. See [`examples/long-migration-example.ts`](./examples/long-migration-example.ts).
+
+A table lock expires unless it is renewed. For a long run, set `leaseMs` longer than a single slow statement and keep `renewIntervalMs` under half of that lease. Waiters poll `maxRetries * retryIntervalMs`:
+
+```typescript
+const coordinator = new MigrationCoordinator({
+  driver,
+  lockProvider: new PostgresTableLock({ leaseMs: 120_000 }), // MySQLTableLock / SqliteTableLock too
+  migrationRunner,
+  renewIntervalMs: 20_000,
+  retryConfig: { maxRetries: 900, retryIntervalMs: 2000 },
+});
+```
+
+The coordinator does not retry a dropped connection. A failed query throws `LockAcquisitionError` or `MigrationExecutionError`.
+
+## Releasing a stuck lock
+
+`migrate()` calls `release()` when it finishes, including when the migration throws. A crashed process is different for each lock.
+
+| Lock | After a crash | Clear it by hand |
+|---|---|---|
+| `PostgresAdvisoryLock` | The database drops it when the connection closes. A hung process that still owns the session keeps it. | There is no `forceRelease`. Disconnect the holder, or `SELECT pg_terminate_backend(pid)` for the backend in `pg_locks` where `locktype = 'advisory'`. `release(driver)` runs `pg_advisory_unlock` on that same session. `scope: 'transaction'` ends at `COMMIT` or `ROLLBACK`. |
+| `MySQLAdvisoryLock` | `GET_LOCK` ends when that session disconnects. | There is no `forceRelease`. `release(driver)` runs `RELEASE_LOCK` on that session. Otherwise kill the connection that holds the name. |
+| `MssqlAppLock` | `sp_getapplock` ends when that session disconnects. | There is no `forceRelease`. `release(driver)` runs `sp_releaseapplock` on that session. `scope: 'transaction'` ends at `COMMIT` or `ROLLBACK`. Otherwise kill the SQL Server session. |
+| `PostgresTableLock`, `MySQLTableLock`, `SqliteTableLock` | The next replica takes the row after `expires_at` (default 30 seconds). | `status(driver)` shows `holder`, `lockedAt`, and `expiresAt`. `forceRelease(driver)` deletes the row. `release(driver)` deletes it only when this process is the holder. |
+
+```typescript
+const lock = new PostgresTableLock(); // or MySQLTableLock / SqliteTableLock
+const status = await lock.status(driver);
+await lock.forceRelease(driver);
+```
+
+[`examples/release-lock-example.ts`](./examples/release-lock-example.ts) does this for Postgres, MySQL, and SQLite.
+
 ## 🛠️ Development
 
 Requires **Node.js 26** (CI and Docker) or at least **24.15**.

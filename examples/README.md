@@ -1,9 +1,11 @@
 # Examples
 
-Standalone TypeORM snippets:
+Configuration snippets:
 
-- `typeorm-example.ts`
-- `node-pg-example.ts`
+- `node-pg-example.ts` — Postgres advisory lock and retry settings
+- `typeorm-example.ts` — TypeORM with a Postgres table lock and a 2-minute wait
+- `long-migration-example.ts` — advisory lock held across a long migration (`timeoutMs`)
+- `release-lock-example.ts` — `status` and `forceRelease` for Postgres, MySQL, and SQLite table locks
 - `custom-database-example.ts`
 
 Runnable multi-replica apps (Postgres and MySQL, three replicas each; SQLite shares one file; SQL Server is one database for Nest and Express):
