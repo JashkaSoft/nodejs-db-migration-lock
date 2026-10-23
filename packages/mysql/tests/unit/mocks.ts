@@ -19,7 +19,10 @@ export class MockMysqlDriver implements SqlDriver {
     if (normalized.includes('release_lock')) {
       return [{ released: 1 }] as T[];
     }
-    if (normalized.includes('insert ignore')) {
+    if (normalized.includes('insert')) {
+      return [{ affectedRows: this.insertAffectedRows }] as T[];
+    }
+    if (normalized.includes('update') || normalized.includes('delete')) {
       return [{ affectedRows: this.insertAffectedRows }] as T[];
     }
     if (normalized.includes('select 1')) {
