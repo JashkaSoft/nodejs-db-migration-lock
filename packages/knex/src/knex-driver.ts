@@ -45,11 +45,29 @@ function unwrapKnexResult<T>(result: unknown): T[] {
  */
 export class KnexDriver implements SqlDriver {
   private session: unknown | undefined;
+  private readonly ownsKnex: boolean;
 
-  constructor(private knex: Knex) {
+  /**
+   * A forked driver releases only its checked-out connection.
+   */
+  constructor(
+    private knex: Knex,
+    options: { ownsKnex?: boolean; session?: unknown } = {},
+  ) {
     if (!knex || typeof knex.raw !== 'function') {
       throw new Error('KnexDriver requires a Knex instance');
     }
+    this.ownsKnex = options.ownsKnex !== false;
+    this.session = options.session;
+  }
+
+  async fork(): Promise<SqlDriver> {
+    const client = this.client();
+    if (!client) {
+      throw new Error('KnexDriver.fork requires client.acquireConnection');
+    }
+    const session = await client.acquireConnection();
+    return new KnexDriver(this.knex, { ownsKnex: false, session });
   }
 
   async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
@@ -96,7 +114,9 @@ export class KnexDriver implements SqlDriver {
       await client.releaseConnection(this.session);
       this.session = undefined;
     }
-    await this.knex.destroy();
+    if (this.ownsKnex) {
+      await this.knex.destroy();
+    }
   }
 
   private client(): KnexClient | undefined {

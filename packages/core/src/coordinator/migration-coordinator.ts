@@ -120,29 +120,54 @@ export class MigrationCoordinator {
 
     this.lockHeld = true;
     this.onLockAcquired?.();
-    const stopRenewal = this.startRenewal();
+    let heartbeat: SqlDriver = this.driver;
+    let stopRenewal: () => Promise<void> = async () => undefined;
 
     try {
-      this.onMigrationStart?.();
-      await this.migrationRunner.run();
-      if (this.leaseLost) {
-        throw new LockLeaseLostError();
+      heartbeat = await this.openHeartbeat();
+      stopRenewal = this.startRenewal(heartbeat);
+      try {
+        this.onMigrationStart?.();
+        await this.migrationRunner.run();
+        if (this.leaseLost) {
+          throw new LockLeaseLostError();
+        }
+        this.onMigrationComplete?.();
+      } catch (error) {
+        if (error instanceof LockLeaseLostError) {
+          throw error;
+        }
+        throw new MigrationExecutionError(
+          'Failed to execute migrations',
+          error,
+        );
       }
-      this.onMigrationComplete?.();
-    } catch (error) {
-      if (error instanceof LockLeaseLostError) {
-        throw error;
-      }
-      throw new MigrationExecutionError(
-        'Failed to execute migrations',
-        error,
-      );
     } finally {
-      stopRenewal();
+      await stopRenewal();
+      if (heartbeat !== this.driver) {
+        try {
+          await heartbeat.close?.();
+        } catch (error) {
+          console.error('Failed to close lease connection:', error);
+        }
+      }
       if (!this.lockProvider.transactionScoped) {
         await this.releaseLock();
       }
     }
+  }
+
+  /**
+   * Table-lock renewal has to use another session. The lock connection can be
+   * busy with a long migration statement, and that statement would otherwise
+   * block the heartbeat until the lease expires.
+   * A transaction-scoped lock row is invisible to other sessions until commit.
+   */
+  private async openHeartbeat(): Promise<SqlDriver> {
+    if (!this.lockProvider.renew || this.lockProvider.transactionScoped || !this.driver.fork) {
+      return this.driver;
+    }
+    return this.driver.fork();
   }
 
   private async acquireLock(signal?: AbortSignal): Promise<boolean> {
@@ -170,25 +195,31 @@ export class MigrationCoordinator {
     );
   }
 
-  private startRenewal(): () => void {
+  private startRenewal(driver: SqlDriver): () => Promise<void> {
     if (!this.lockProvider.renew) {
-      return () => undefined;
+      return async () => undefined;
     }
 
+    let tail = Promise.resolve();
     const timer = setInterval(() => {
-      void this.lockProvider.renew!(this.driver).then(
-        (renewed) => {
-          if (!renewed) {
-            this.leaseLost = true;
-          }
-        },
-        () => {
-          this.leaseLost = true;
-        },
-      );
+      tail = tail.then(() => this.beat(driver));
     }, this.renewIntervalMs);
     timer.unref?.();
-    return () => clearInterval(timer);
+    return async () => {
+      clearInterval(timer);
+      await tail;
+    };
+  }
+
+  private async beat(driver: SqlDriver): Promise<void> {
+    try {
+      const renewed = await this.lockProvider.renew!(driver);
+      if (!renewed) {
+        this.leaseLost = true;
+      }
+    } catch {
+      this.leaseLost = true;
+    }
   }
 
   private async releaseLock(): Promise<void> {

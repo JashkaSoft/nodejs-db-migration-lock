@@ -16,11 +16,29 @@ type ConnectionManager = {
 export class SequelizeDriver implements SqlDriver {
   private activeTransaction: Transaction | null = null;
   private pinned: unknown | undefined;
+  private readonly ownsSequelize: boolean;
 
-  constructor(private sequelize: Sequelize) {
+  /**
+   * A forked driver releases only its checked-out connection.
+   */
+  constructor(
+    private sequelize: Sequelize,
+    options: { ownsSequelize?: boolean; pinned?: unknown } = {},
+  ) {
     if (!sequelize || typeof sequelize.query !== 'function') {
       throw new Error('SequelizeDriver requires a Sequelize instance');
     }
+    this.ownsSequelize = options.ownsSequelize !== false;
+    this.pinned = options.pinned;
+  }
+
+  async fork(): Promise<SqlDriver> {
+    const manager = this.manager();
+    if (!manager) {
+      throw new Error('SequelizeDriver.fork requires connectionManager');
+    }
+    const pinned = await manager.getConnection({ type: 'write' });
+    return new SequelizeDriver(this.sequelize, { ownsSequelize: false, pinned });
   }
 
   async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
@@ -87,7 +105,9 @@ export class SequelizeDriver implements SqlDriver {
       await manager.releaseConnection(this.pinned);
       this.pinned = undefined;
     }
-    await this.sequelize.close();
+    if (this.ownsSequelize) {
+      await this.sequelize.close();
+    }
   }
 
   private manager(): ConnectionManager | undefined {

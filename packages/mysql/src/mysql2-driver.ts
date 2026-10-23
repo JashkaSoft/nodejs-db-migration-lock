@@ -33,7 +33,22 @@ function toRows<T>(result: unknown): T[] {
 export class Mysql2Driver implements SqlDriver {
   private sessionClient: PoolConnection | null = null;
 
-  constructor(private client: MysqlConnection) {}
+  /**
+   * `end` closes a Pool or a standalone Connection.
+   * `release` returns a forked pool connection without closing the pool.
+   */
+  constructor(
+    private client: MysqlConnection,
+    private readonly closeMode: 'end' | 'release' = 'end',
+  ) {}
+
+  async fork(): Promise<SqlDriver> {
+    if (!isMysqlPool(this.client)) {
+      throw new Error('Mysql2Driver.fork requires a mysql2 Pool');
+    }
+    const connection = await this.client.getConnection();
+    return new Mysql2Driver(connection, 'release');
+  }
 
   async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     const connection = await this.getConnection();
@@ -58,6 +73,11 @@ export class Mysql2Driver implements SqlDriver {
     if (this.sessionClient) {
       this.sessionClient.release();
       this.sessionClient = null;
+    }
+
+    if (this.closeMode === 'release') {
+      (this.client as PoolConnection).release();
+      return;
     }
 
     if ('end' in this.client && typeof this.client.end === 'function') {

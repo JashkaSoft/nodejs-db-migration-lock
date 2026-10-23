@@ -3,7 +3,7 @@
  */
 
 import { MigrationCoordinator } from '../coordinator/migration-coordinator';
-import { LockProvider } from '../interfaces';
+import { LockProvider, SqlDriver } from '../interfaces';
 import {
   LockAcquisitionError,
   LockLeaseLostError,
@@ -511,6 +511,69 @@ describe('MigrationCoordinator', () => {
 
       await expect(coordinator.migrate()).rejects.toThrow(LockAcquisitionError);
       expect(migrationRunner.runCalls).toBe(0);
+    });
+
+    it('renews the lease on a forked connection and closes it', async () => {
+      const heartbeat = new MockSqlDriver();
+      let closed = false;
+      heartbeat.close = async () => {
+        closed = true;
+      };
+      driver.fork = async () => heartbeat;
+      const seen: SqlDriver[] = [];
+      lockProvider.renew = async (active) => {
+        seen.push(active);
+        return true;
+      };
+      migrationRunner.runDelay = 40;
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+        renewIntervalMs: 5,
+      });
+
+      await coordinator.migrate();
+      expect(seen.length).toBeGreaterThan(0);
+      expect(seen.every((active) => active === heartbeat)).toBe(true);
+      expect(closed).toBe(true);
+      expect(lockProvider.releaseCalls).toBe(1);
+    });
+
+    it('releases the lock when opening the heartbeat connection fails', async () => {
+      driver.fork = async () => {
+        throw new Error('no spare connection');
+      };
+      lockProvider.renew = async () => true;
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+      });
+
+      await expect(coordinator.migrate()).rejects.toThrow(LockAcquisitionError);
+      expect(migrationRunner.runCalls).toBe(0);
+      expect(lockProvider.releaseCalls).toBe(1);
+    });
+
+    it('does not fork when the lock is transaction scoped', async () => {
+      lockProvider.transactionScoped = true;
+      lockProvider.renew = async () => true;
+      const fork = jest.fn(async () => new MockSqlDriver());
+      driver.fork = fork;
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+        renewIntervalMs: 5,
+      });
+
+      await coordinator.migrate();
+      expect(fork).not.toHaveBeenCalled();
+      expect(lockProvider.releaseCalls).toBe(0);
     });
 
     it('fails when the lease is lost during the migration', async () => {

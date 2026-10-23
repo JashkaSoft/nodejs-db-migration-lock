@@ -132,6 +132,26 @@ describe('SequelizeDriver', () => {
     expect(sequelize.closed).toBe(true);
   });
 
+  it('forks a second connection and leaves Sequelize open', async () => {
+    const connections = [{ id: 'lock' }, { id: 'heartbeat' }];
+    const manager = {
+      getConnection: jest.fn(async () => connections.shift()),
+      releaseConnection: jest.fn(async () => undefined),
+    };
+    (sequelize as MockSequelize & { connectionManager: typeof manager }).connectionManager = manager;
+
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await driver.query('SELECT 1');
+    const heartbeat = await driver.fork();
+    await heartbeat.query('UPDATE migration_lock SET expires_at = ?', [1]);
+    await heartbeat.close?.();
+    expect(manager.releaseConnection).toHaveBeenCalledWith({ id: 'heartbeat' });
+    expect(sequelize.closed).toBe(false);
+    await driver.close();
+    expect(manager.releaseConnection).toHaveBeenCalledWith({ id: 'lock' });
+    expect(sequelize.closed).toBe(true);
+  });
+
   it('closes the Sequelize instance', async () => {
     const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
     await driver.close();

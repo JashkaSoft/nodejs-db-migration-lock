@@ -10,12 +10,31 @@ export class TypeORMDriver implements SqlDriver {
   private runner: QueryRunner | null = null;
   private connecting: Promise<QueryRunner | null> | null = null;
 
-  constructor(private dataSource: DataSource) {
+  /**
+   * A forked driver keeps the DataSource open and only releases its own runner.
+   */
+  constructor(
+    private dataSource: DataSource,
+    private readonly ownsDataSource = true,
+    runner?: QueryRunner,
+  ) {
     if (!dataSource.isInitialized) {
       throw new Error(
         'TypeORM DataSource must be initialized before use with TypeORMDriver',
       );
     }
+    if (runner) {
+      this.runner = runner;
+    }
+  }
+
+  async fork(): Promise<SqlDriver> {
+    if (typeof this.dataSource.createQueryRunner !== 'function') {
+      throw new Error('TypeORMDriver.fork requires DataSource.createQueryRunner');
+    }
+    const runner = this.dataSource.createQueryRunner();
+    await runner.connect();
+    return new TypeORMDriver(this.dataSource, false, runner);
   }
 
   async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
@@ -48,7 +67,7 @@ export class TypeORMDriver implements SqlDriver {
       await this.runner.release();
       this.runner = null;
     }
-    if (this.dataSource.isInitialized) {
+    if (this.ownsDataSource && this.dataSource.isInitialized) {
       await this.dataSource.destroy();
     }
   }

@@ -130,6 +130,37 @@ describe('KnexDriver', () => {
     expect(knex.destroyed).toBe(true);
   });
 
+  it('forks a second connection and leaves Knex open', async () => {
+    const connections = [{ id: 'lock' }, { id: 'heartbeat' }];
+    const client = {
+      acquireConnection: jest.fn(async () => connections.shift()),
+      releaseConnection: jest.fn(async () => undefined),
+    };
+    (knex as MockKnex & { client: typeof client }).client = client;
+    knex.raw = (sql: string, params?: unknown[]) => {
+      const builder = Promise.resolve([{ ok: 1 }]) as Promise<unknown> & {
+        connection?: (pinned: unknown) => Promise<unknown>;
+      };
+      builder.connection = (pinned: unknown) => {
+        knex.calls.push({ sql, params, connection: pinned });
+        return Promise.resolve([{ ok: 1 }]);
+      };
+      return builder;
+    };
+
+    const driver = new KnexDriver(knex as unknown as Knex);
+    await driver.query('SELECT 1');
+    const heartbeat = await driver.fork();
+    await heartbeat.query('UPDATE migration_lock SET expires_at = $1', [1]);
+    await heartbeat.close?.();
+    expect(client.releaseConnection).toHaveBeenCalledWith({ id: 'heartbeat' });
+    expect(knex.destroyed).toBe(false);
+    expect(knex.calls.at(-1)?.connection).toEqual({ id: 'heartbeat' });
+    await driver.close();
+    expect(client.releaseConnection).toHaveBeenCalledWith({ id: 'lock' });
+    expect(knex.destroyed).toBe(true);
+  });
+
   it('destroys the Knex instance on close', async () => {
     const driver = new KnexDriver(knex as unknown as Knex);
     await driver.close();

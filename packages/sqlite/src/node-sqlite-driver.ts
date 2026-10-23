@@ -1,5 +1,5 @@
 import { SqlDriver } from '@nodejs-db-migration-lock/core';
-import type { DatabaseSync, SQLInputValue } from 'node:sqlite';
+import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 
 function returnsRows(sql: string): boolean {
   const normalized = sql.trim().replace(/^\(+/, '').toLowerCase();
@@ -83,6 +83,14 @@ export class NodeSqliteDriver implements SqlDriver {
       }
       throw error;
     }
+  }
+
+  async fork(): Promise<SqlDriver> {
+    const path = this.db.location();
+    if (!path) {
+      throw new Error('NodeSqliteDriver.fork requires a file-backed database');
+    }
+    return new NodeSqliteDriver(new DatabaseSync(path));
   }
 
   async close(): Promise<void> {
