@@ -32,6 +32,8 @@ export class MockSqlDriver implements SqlDriver {
     // Mock close
   }
 
+  fork?: () => Promise<SqlDriver>;
+
   // Helper methods
   mockQueryResult(sql: string, result: unknown[]): void {
     this.queryResults.set(this.normalizeQuery(sql), result);

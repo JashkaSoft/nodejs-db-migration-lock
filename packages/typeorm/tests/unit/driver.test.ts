@@ -107,6 +107,46 @@ describe('TypeORMDriver', () => {
     expect(dataSource.isInitialized).toBe(false);
   });
 
+  it('forks a second query runner and leaves the DataSource open', async () => {
+    function makeRunner() {
+      const runner = {
+        isReleased: false,
+        queries: [] as string[],
+        connect: jest.fn(async () => undefined),
+        query: jest.fn(async (sql: string) => {
+          runner.queries.push(sql);
+          return [{ ok: 1 }];
+        }),
+        startTransaction: jest.fn(async () => undefined),
+        commitTransaction: jest.fn(async () => undefined),
+        rollbackTransaction: jest.fn(async () => undefined),
+        release: jest.fn(async () => {
+          runner.isReleased = true;
+        }),
+      };
+      return runner;
+    }
+    const lockRunner = makeRunner();
+    const heartbeatRunner = makeRunner();
+    (dataSource as MockDataSource & { createQueryRunner: () => ReturnType<typeof makeRunner> }).createQueryRunner =
+      jest.fn()
+        .mockReturnValueOnce(lockRunner)
+        .mockReturnValueOnce(heartbeatRunner);
+
+    const driver = new TypeORMDriver(asDataSource(dataSource));
+    await driver.query('SELECT 1');
+    const heartbeat = await driver.fork();
+    await heartbeat.query('UPDATE migration_lock SET expires_at = $1', [1]);
+    await heartbeat.close?.();
+    expect(heartbeatRunner.queries).toEqual(['UPDATE migration_lock SET expires_at = $1']);
+    expect(heartbeatRunner.isReleased).toBe(true);
+    expect(lockRunner.isReleased).toBe(false);
+    expect(dataSource.isInitialized).toBe(true);
+    await driver.close();
+    expect(lockRunner.isReleased).toBe(true);
+    expect(dataSource.isInitialized).toBe(false);
+  });
+
   it('destroys the DataSource on close', async () => {
     const driver = new TypeORMDriver(asDataSource(dataSource));
     await driver.close();

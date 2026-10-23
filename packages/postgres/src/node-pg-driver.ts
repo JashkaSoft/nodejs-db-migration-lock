@@ -20,7 +20,22 @@ function isPgPool(client: PgConnection): client is Pool {
 export class NodePgDriver implements SqlDriver {
   private sessionClient: PoolClient | null = null;
 
-  constructor(private client: PgConnection) {}
+  /**
+   * `end` closes a Pool or a standalone Client.
+   * `release` returns a forked pool client without closing the pool.
+   */
+  constructor(
+    private client: PgConnection,
+    private readonly closeMode: 'end' | 'release' = 'end',
+  ) {}
+
+  async fork(): Promise<SqlDriver> {
+    if (!isPgPool(this.client)) {
+      throw new Error('NodePgDriver.fork requires a pg Pool');
+    }
+    const client = await this.client.connect();
+    return new NodePgDriver(client, 'release');
+  }
 
   async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     const connection = await this.getConnection();
@@ -45,6 +60,11 @@ export class NodePgDriver implements SqlDriver {
     if (this.sessionClient) {
       this.sessionClient.release();
       this.sessionClient = null;
+    }
+
+    if (this.closeMode === 'release') {
+      (this.client as PoolClient).release();
+      return;
     }
 
     if ('end' in this.client && typeof this.client.end === 'function') {

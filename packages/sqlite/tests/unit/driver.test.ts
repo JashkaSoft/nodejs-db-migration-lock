@@ -1,4 +1,7 @@
-import type { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync } from 'node:sqlite';
+import { mkdtempSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { NodeSqliteDriver } from '../../src/node-sqlite-driver';
 
 function asDatabase(db: MockDatabase | Record<string, never>): DatabaseSync {
@@ -88,5 +91,23 @@ describe('NodeSqliteDriver', () => {
     const driver = new NodeSqliteDriver(asDatabase(db));
     await driver.close();
     expect(db.closed).toBe(true);
+  });
+
+  it('forks a second connection to the same file', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sqlite-fork-'));
+    const driver = new NodeSqliteDriver(new DatabaseSync(join(dir, 'app.db')));
+    const heartbeat = await driver.fork();
+    await driver.query('CREATE TABLE t (id INTEGER)');
+    await heartbeat.query('INSERT INTO t (id) VALUES (?)', [1]);
+    await expect(driver.query('SELECT id FROM t')).resolves.toEqual([{ id: 1 }]);
+    await heartbeat.close?.();
+    await expect(driver.query('SELECT id FROM t')).resolves.toEqual([{ id: 1 }]);
+    await driver.close();
+  });
+
+  it('refuses to fork an in-memory database', async () => {
+    const driver = new NodeSqliteDriver(new DatabaseSync(':memory:'));
+    await expect(driver.fork()).rejects.toThrow('file-backed');
+    await driver.close();
   });
 });
