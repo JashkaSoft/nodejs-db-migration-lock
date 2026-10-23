@@ -233,7 +233,7 @@ npm run test:e2e:typeorm:postgres
 npm run test:e2e:typeorm:mysql
 ```
 
-SQLite is still out of scope. Multi-replica TypeORM apps live in [`examples/`](./examples) (NestJS, Express, Fastify) against Postgres and MySQL.
+SQLite is still out of scope. Multi-replica apps live in [`examples/`](./examples) (NestJS/Express/Fastify + TypeORM, NestJS + Sequelize) against Postgres and MySQL.
 
 ## 🤝 Contributing
 
