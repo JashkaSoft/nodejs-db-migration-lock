@@ -21,6 +21,7 @@ nodejs-db-migration-lock/
 │   │   │   ├── coordinator/    # MigrationCoordinator
 │   │   │   ├── errors/         # Error types
 │   │   │   ├── interfaces/     # Core interfaces
+│   │   │   ├── lock/           # Lock keys, holder, process mutex
 │   │   │   └── retry/          # Retry logic
 │   │   └── package.json
 │   │
@@ -29,7 +30,8 @@ nodejs-db-migration-lock/
 │   ├── typeorm/           # TypeORM DataSource adapter (DB-agnostic)
 │   ├── sequelize/         # Sequelize adapter (DB-agnostic)
 │   ├── knex/              # Knex adapter (DB-agnostic)
-│   └── sqlite/            # SQLite table lock + NodeSqliteDriver
+│   ├── sqlite/            # SQLite table lock + NodeSqliteDriver
+│   └── mssql/             # SQL Server sp_getapplock + TediousDriver
 │
 ├── examples/              # Usage examples
 └── README.md

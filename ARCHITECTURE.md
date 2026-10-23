@@ -155,18 +155,22 @@ const driver = new MyCustomDriver(myClient);
 
 ### @nodejs-db-migration-lock/sqlite
 **SQLite-specific implementations**
-- `SqliteTableLock` - `INSERT OR IGNORE` into a one-row lock table
+- `SqliteTableLock` - one-row lease (`holder`, `locked_at`, `expires_at`)
 - `NodeSqliteDriver` - Node.js `node:sqlite` `DatabaseSync`
 
+### @nodejs-db-migration-lock/mssql
+**SQL Server application locks**
+- `MssqlAppLock` - `sp_getapplock` / `sp_releaseapplock` (session by default, transaction opt-in)
+- `TediousDriver` - one tedious connection for the life of the lock
+
 ### Other packages
-- `@nodejs-db-migration-lock/mysql` - MySQL/MariaDB locks + `Mysql2Driver`
-- `@nodejs-db-migration-lock/mssql` - Microsoft SQL Server support (planned)
+- `@nodejs-db-migration-lock/mysql` - MySQL/MariaDB `GET_LOCK` and a leased table lock + `Mysql2Driver`
 
 ## Lock Strategies
 
 ### PostgreSQL Advisory Locks
 
-**Implementation**: Uses PostgreSQL's `pg_try_advisory_lock()`
+**Implementation**: Session `pg_advisory_lock` (blocks until timeout) or `pg_try_advisory_lock` when `wait` is `poll`. Transaction scope uses `pg_advisory_xact_lock`. The default key is `salt × CRC32(current_database())`.
 
 **Pros**:
 - Very fast (no disk I/O)

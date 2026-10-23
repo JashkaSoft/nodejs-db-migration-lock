@@ -31,6 +31,7 @@ This is a monorepo containing multiple packages:
 | [@nodejs-db-migration-lock/sequelize](./packages/sequelize) | Sequelize driver (DB-agnostic) | 0.1.0 |
 | [@nodejs-db-migration-lock/knex](./packages/knex) | Knex driver (DB-agnostic) | 0.1.0 |
 | [@nodejs-db-migration-lock/sqlite](./packages/sqlite) | SQLite table lock + `node:sqlite` driver | 0.1.0 |
+| [@nodejs-db-migration-lock/mssql](./packages/mssql) | SQL Server `sp_getapplock` + tedious driver | 0.1.0 |
 
 ## 🚀 Quick Start
 
@@ -56,6 +57,10 @@ npm install @nodejs-db-migration-lock/knex knex
 
 # SQLite (Node.js built-in node:sqlite)
 npm install @nodejs-db-migration-lock/sqlite
+
+# SQL Server
+npm install @nodejs-db-migration-lock/core @nodejs-db-migration-lock/mssql
+npm install tedious
 ```
 
 ### Basic Usage with TypeORM
@@ -196,33 +201,53 @@ Multiple CI/CD pipelines (staging, production, feature branches) sharing a datab
 
 ### PostgreSQL
 
-**Advisory Locks** (Fast, automatic cleanup)
+**Advisory locks** (session by default; released when the connection closes)
 ```typescript
-new PostgresAdvisoryLock({ lockId: 123456789 })
+new PostgresAdvisoryLock() // key derived from current_database()
+new PostgresAdvisoryLock({ lockId: 123456789, scope: 'session', wait: 'database' })
+new PostgresAdvisoryLock({ lockId: 123456789, scope: 'transaction' })
 ```
 
-**Table Locks** (Persistent, survives connection drops)
+`wait: 'database'` blocks in `pg_advisory_lock` until `retryConfig.timeoutMs`. `scope: 'transaction'` uses `pg_advisory_xact_lock` and the coordinator holds one transaction across the migration. Session scope is the default because a typical ORM migration opens more than one transaction.
+
+**Table locks** (one-row lease: `holder`, `locked_at`, `expires_at`)
 ```typescript
-new PostgresTableLock({ tableName: 'migration_lock' })
+new PostgresTableLock({ tableName: 'migration_lock', leaseMs: 30000 })
 ```
 
-Creates (if missing) `migration_lock` and sequence `migration_lock_id_seq`. The DB user needs `CREATE` on the schema (or pre-create these objects).
+The coordinator renews the lease while migrations run. `release()` deletes the row only when `holder` matches. `forceRelease()` clears it after a crash if you do not want to wait for `expires_at`. Creates (if missing) `migration_lock`. The DB user needs `CREATE` on the schema (or pre-create the table). An older `id`/`created_at` lock table gets the new columns on startup.
 
 ### MySQL
 
-**Advisory (`GET_LOCK`)** — session-scoped; pin one connection (`Mysql2Driver`).
+**Advisory (`GET_LOCK`)** — session-scoped and server-wide. The default name is `nodejs_db_migration_lock:<database>`. Pin one connection (`Mysql2Driver`). `GET_LOCK` waits in MySQL for the coordinator timeout.
 ```typescript
-new MySQLAdvisoryLock({ lockName: 'migration_lock' })
+new MySQLAdvisoryLock()
+new MySQLAdvisoryLock({ lockName: 'migration_lock', wait: 'database' })
 ```
 
-Creates no tables. `GET_LOCK` only needs a normal session.
+Creates no tables.
 
-**Table lock** (`INSERT IGNORE` into a one-row table)
+**Table lock** (one-row lease, same columns as Postgres)
 ```typescript
 new MySQLTableLock({ tableName: 'migration_lock' })
 ```
 
-Creates (if missing) `migration_lock`. The DB user needs `CREATE` on the database (or pre-create the table).
+A short `GET_LOCK` wraps the row update so two sessions cannot steal an expired lease at once. Creates (if missing) `migration_lock`. The DB user needs `CREATE` on the database (or pre-create the table).
+
+### SQLite
+
+`SqliteTableLock` is the same lease table. SQLite has no advisory lock; the write transaction makes the upsert atomic.
+
+### SQL Server
+
+```typescript
+new MssqlAppLock() // sp_getapplock, resource scoped with DB_NAME()
+new MssqlAppLock({ lockName: 'migration_lock', scope: 'session' })
+```
+
+`TediousDriver` keeps one connection. A session application lock ends when that connection closes. Pass `scope: 'transaction'` only when the migration runs inside that connection's transaction.
+
+ORM drivers (`TypeORMDriver`, `SequelizeDriver`, `KnexDriver`) check out one connection for lock SQL. Run the migration on the ORM's own pool. Two `migrate()` calls in one process that share a lock key wait for each other before they pin a second connection.
 
 Advisory strategies need no extra DDL privileges. Table strategies only create the lock objects above — not your application schema. If the app user cannot create tables, create those objects in a migration/admin step and keep using the same `tableName`.
 
@@ -248,6 +273,7 @@ npm run test:e2e:typeorm:mysql
 npm run test:e2e:sequelize:postgres
 npm run test:e2e:sequelize:mysql
 npm run test:e2e:sqlite:node-sqlite
+npm run test:e2e:mssql:tedious
 
 # Same mysql2 suite against the LTS servers people still run.
 # Pull requests stay on MySQL 9.7. These two run on main and weekly.
