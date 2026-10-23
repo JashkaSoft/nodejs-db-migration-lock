@@ -1,0 +1,16 @@
+{
+  "name": "e2e-mysql-typeorm",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "file:../../../../core",
+    "@nodejs-db-migration-lock/mysql": "file:../../../../mysql",
+    "mysql2": "^3.15.3",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.27"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
