@@ -192,6 +192,8 @@ new PostgresAdvisoryLock({ lockId: 123456789 })
 new PostgresTableLock({ tableName: 'migration_lock' })
 ```
 
+Creates (if missing) `migration_lock` and sequence `migration_lock_id_seq`. The DB user needs `CREATE` on the schema (or pre-create these objects).
+
 ### MySQL
 
 **Advisory (`GET_LOCK`)** — session-scoped; pin one connection (`Mysql2Driver`).
@@ -199,10 +201,16 @@ new PostgresTableLock({ tableName: 'migration_lock' })
 new MySQLAdvisoryLock({ lockName: 'migration_lock' })
 ```
 
+Creates no tables. `GET_LOCK` only needs a normal session.
+
 **Table lock** (`INSERT IGNORE` into a one-row table)
 ```typescript
 new MySQLTableLock({ tableName: 'migration_lock' })
 ```
+
+Creates (if missing) `migration_lock`. The DB user needs `CREATE` on the database (or pre-create the table).
+
+Advisory strategies need no extra DDL privileges. Table strategies only create the lock objects above — not your application schema. If the app user cannot create tables, create those objects in a migration/admin step and keep using the same `tableName`.
 
 ## 🛠️ Development
 
