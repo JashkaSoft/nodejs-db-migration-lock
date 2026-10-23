@@ -8,6 +8,7 @@ COPY tsconfig.json ./
 COPY packages/core ./packages/core
 COPY packages/postgres ./packages/postgres
 COPY packages/mysql ./packages/mysql
+COPY packages/sequelize ./packages/sequelize
 
 RUN npm install && npm run build
 

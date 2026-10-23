@@ -3,7 +3,7 @@ import { Umzug, SequelizeStorage } from 'umzug';
 import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
 import { PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
 import { MySQLTableLock } from '@nodejs-db-migration-lock/mysql';
-import { SequelizeDriver } from './sequelize-driver';
+import { SequelizeDriver } from '@nodejs-db-migration-lock/sequelize';
 
 class SequelizeUmzugRunner implements MigrationRunner {
   constructor(private readonly sequelize: Sequelize) {}
