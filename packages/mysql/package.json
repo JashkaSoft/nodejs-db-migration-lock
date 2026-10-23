@@ -1,0 +1,61 @@
+{
+  "name": "@nodejs-db-migration-lock/mysql",
+  "version": "0.1.0",
+  "description": "MySQL/MariaDB adapter for database migration locking",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "jest --config tests/jest.config.unit.js",
+    "test:unit": "jest --config tests/jest.config.unit.js",
+    "test:e2e": "./tests/e2e/run-test.sh typeorm && ./tests/e2e/run-test.sh mysql2",
+    "test:e2e:typeorm": "./tests/e2e/run-test.sh typeorm",
+    "test:e2e:mysql2": "./tests/e2e/run-test.sh mysql2",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "database",
+    "migration",
+    "lock",
+    "mysql",
+    "mariadb"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/nodejs-db-migration-lock.git",
+    "directory": "packages/mysql"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "@types/node": "^26.6.5",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "jest": "30.5.2",
+    "mysql2": "^3.15.3",
+    "ts-jest": "29.4.15",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
+  },
+  "peerDependencies": {
+    "mysql2": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "mysql2": {
+      "optional": true
+    },
+    "typeorm": {
+      "optional": true
+    }
+  }
+}
