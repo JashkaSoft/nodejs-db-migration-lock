@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Migration_Lock_1"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Migration_Lock_1' -C -Q 'SELECT 1' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 25s
+    networks:
+      - migration-net
+
+  migrator-1: &migrator
+    image: nodejs-db-migration-lock-e2e-mssql-tedious:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/mssql/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: tedious
+    environment: &db
+      MSSQL_HOST: mssql
+      MSSQL_PORT: 1433
+      MSSQL_USER: sa
+      MSSQL_PASSWORD: Migration_Lock_1
+      MSSQL_DB: master
+      PROCESS_ID: "1"
+    depends_on:
+      mssql:
+        condition: service_healthy
+    networks:
+      - migration-net
+    command: ["node", "dist/migrate.js"]
+
+  migrator-2:
+    <<: *migrator
+    environment:
+      <<: *db
+      PROCESS_ID: "2"
+
+  migrator-3:
+    <<: *migrator
+    environment:
+      <<: *db
+      PROCESS_ID: "3"
+
+  test-runner:
+    <<: *migrator
+    environment:
+      <<: *db
+      EXPECTED_PROCESSES: "3"
+    command: ["node", "dist/verify.js"]
+
+networks:
+  migration-net:
+    driver: bridge
