@@ -2,6 +2,8 @@
 
 MySQL/MariaDB adapter with `GET_LOCK()` advisory locks and table-based locks.
 
+Pull-request end-to-end tests use MySQL 9.7. MySQL 8.4 and MariaDB 11.8 run the same mysql2 suite on `main` and weekly (`MYSQL_IMAGE`).
+
 ## Installation
 
 ```bash

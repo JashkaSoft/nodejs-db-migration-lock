@@ -62,7 +62,7 @@ npm test
 npm run test:e2e:postgres
 ```
 
-CI runs unit tests and the Postgres e2e suite on GitHub Actions.
+CI runs unit tests and every adapter e2e suite on pull requests (MySQL 9.7 and Postgres 18). MySQL 8.4 and MariaDB 11.8 run the mysql2 suite on `main` and weekly.
 
 ## 📝 Adding Support for a New Database
 
