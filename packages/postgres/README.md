@@ -6,7 +6,7 @@ PostgreSQL adapter for database migration locking with support for both advisory
 
 - 🔒 **Advisory Locks** - Fast, lightweight session-level locks
 - 🗄️ **Table-Based Locks** - Persistent locks using a dedicated table
-- 🔌 **Multiple Drivers** - Works with TypeORM, node-postgres (pg), and custom drivers
+- 🔌 **Drivers** - `NodePgDriver` plus any `SqlDriver` (including `@nodejs-db-migration-lock/typeorm`)
 - ⚡ **TypeScript** - Full type safety out of the box
 
 ## Installation
@@ -20,11 +20,11 @@ npm install @nodejs-db-migration-lock/core @nodejs-db-migration-lock/postgres
 Depending on your database client, install one of:
 
 ```bash
-# For TypeORM
-npm install typeorm
-
 # For node-postgres
 npm install pg
+
+# For TypeORM
+npm install @nodejs-db-migration-lock/typeorm typeorm
 ```
 
 ## Lock Strategies
@@ -63,11 +63,8 @@ Uses a dedicated table with a fixed ID to ensure only one lock exists.
 ```typescript
 import { DataSource } from 'typeorm';
 import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
-import { 
-  TypeORMDriver, 
-  PostgresTableLock,
-  PostgresAdvisoryLock 
-} from '@nodejs-db-migration-lock/postgres';
+import { TypeORMDriver } from '@nodejs-db-migration-lock/typeorm';
+import { PostgresTableLock, PostgresAdvisoryLock } from '@nodejs-db-migration-lock/postgres';
 
 // Initialize TypeORM
 const dataSource = new DataSource({
@@ -212,14 +209,6 @@ class PostgresAdvisoryLock implements LockProvider {
   constructor(options?: {
     lockId?: number; // Default: 123456789
   })
-}
-```
-
-### TypeORMDriver
-
-```typescript
-class TypeORMDriver implements SqlDriver {
-  constructor(dataSource: DataSource)
 }
 ```
 

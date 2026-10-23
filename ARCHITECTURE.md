@@ -76,7 +76,7 @@ Clients have three options:
 
 ```typescript
 import { DataSource } from 'typeorm';
-import { TypeORMDriver } from '@nodejs-db-migration-lock/postgres';
+import { TypeORMDriver } from '@nodejs-db-migration-lock/typeorm';
 
 const dataSource = new DataSource({...});
 await dataSource.initialize();
@@ -132,13 +132,17 @@ const driver = new MyCustomDriver(myClient);
   - `PostgresAdvisoryLock` - Session-level locks using `pg_advisory_lock()`
   - `PostgresTableLock` - Table-based locks with INSERT/DELETE
 - Driver Adapters:
-  - `TypeORMDriver` - For TypeORM users
   - `NodePgDriver` - For node-postgres (pg) users
 
-### Future Packages
-- `@nodejs-db-migration-lock/mysql` - MySQL/MariaDB support
-- `@nodejs-db-migration-lock/sqlite` - SQLite support
-- `@nodejs-db-migration-lock/mssql` - Microsoft SQL Server support
+### @nodejs-db-migration-lock/typeorm
+**ORM adapter (database-agnostic)**
+- `TypeORMDriver` - wraps a TypeORM `DataSource`
+- Pair with a dialect lock package (`postgres`, `mysql`, …)
+
+### Other packages
+- `@nodejs-db-migration-lock/mysql` - MySQL/MariaDB locks + `Mysql2Driver`
+- `@nodejs-db-migration-lock/sqlite` - SQLite support (planned)
+- `@nodejs-db-migration-lock/mssql` - Microsoft SQL Server support (planned)
 
 ## Lock Strategies
 
@@ -287,7 +291,7 @@ class MySQLTableLock implements LockProvider {
 }
 ```
 
-4. **No changes to core!** The architecture is completely database-agnostic.
+4. **No changes to core or TypeORM.** Keep ORM adapters in `@nodejs-db-migration-lock/typeorm`; dialect packages only add locks and native clients.
 
 ## Benefits of This Architecture
 

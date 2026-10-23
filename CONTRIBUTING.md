@@ -24,13 +24,9 @@ nodejs-db-migration-lock/
 │   │   │   └── retry/          # Retry logic
 │   │   └── package.json
 │   │
-│   └── postgres/          # PostgreSQL implementation
-│       ├── src/
-│       │   ├── advisory-lock.ts
-│       │   ├── table-lock.ts
-│       │   ├── typeorm-driver.ts
-│       │   └── node-pg-driver.ts
-│       └── package.json
+│   ├── postgres/          # PostgreSQL locks + NodePgDriver
+│   ├── mysql/             # MySQL locks + Mysql2Driver
+│   └── typeorm/           # TypeORM DataSource adapter (DB-agnostic)
 │
 ├── examples/              # Usage examples
 └── README.md
@@ -68,7 +64,7 @@ CI runs unit tests and the Postgres e2e suite on GitHub Actions.
 
 ## 📝 Adding Support for a New Database
 
-Here's a step-by-step guide to add support for a new database (e.g., MySQL):
+Here's a step-by-step guide to add support for a new database (e.g., MySQL). Add lock providers and a native client driver only. Do not copy TypeORM into the dialect package — use `@nodejs-db-migration-lock/typeorm`.
 
 ### 1. Create Package Structure
 
