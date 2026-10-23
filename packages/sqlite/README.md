@@ -29,7 +29,7 @@ const coordinator = new MigrationCoordinator({
 await coordinator.migrate();
 ```
 
-On first use the table lock creates `migration_lock` (or `tableName`). Pair TypeORM/Sequelize/Knex with this lock package the same way as postgres/mysql.
+On first use the table lock creates `migration_lock` (or `tableName`) with `holder`, `locked_at`, and `expires_at`. Pair TypeORM/Sequelize/Knex with this lock package the same way as postgres/mysql.
 
 ```bash
 npm run test:e2e:sqlite:node-sqlite
