@@ -9,9 +9,6 @@ COPY packages/core ./packages/core
 COPY packages/postgres ./packages/postgres
 COPY packages/mysql ./packages/mysql
 COPY packages/typeorm ./packages/typeorm
-COPY packages/sequelize ./packages/sequelize
-COPY packages/knex ./packages/knex
-COPY packages/sqlite ./packages/sqlite
 
 RUN npm install && npm run build
 
