@@ -13,8 +13,7 @@
     "clean": "rm -rf dist *.tsbuildinfo",
     "test": "jest --config tests/jest.config.unit.js",
     "test:unit": "jest --config tests/jest.config.unit.js",
-    "test:e2e": "./tests/e2e/run-test.sh typeorm && ./tests/e2e/run-test.sh mysql2",
-    "test:e2e:typeorm": "./tests/e2e/run-test.sh typeorm",
+    "test:e2e": "./tests/e2e/run-test.sh mysql2",
     "test:e2e:mysql2": "./tests/e2e/run-test.sh mysql2",
     "prepublishOnly": "npm run build"
   },

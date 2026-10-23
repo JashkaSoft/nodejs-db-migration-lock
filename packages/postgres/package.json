@@ -15,11 +15,8 @@
     "test:unit": "jest --config tests/jest.config.unit.js",
     "test:watch": "jest --config tests/jest.config.unit.js --watch",
     "test:coverage": "jest --config tests/jest.config.unit.js --coverage",
-    "test:e2e": "./tests/e2e/run-test.sh node-pg && ./tests/e2e/run-test.sh typeorm",
+    "test:e2e": "./tests/e2e/run-test.sh node-pg",
     "test:e2e:node-pg": "./tests/e2e/run-test.sh node-pg",
-    "test:e2e:typeorm": "./tests/e2e/run-test.sh typeorm",
-    "test:e2e:build": "./tests/e2e/run-test.sh node-pg",
-    "test:e2e:down": "true",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

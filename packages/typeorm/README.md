@@ -27,3 +27,11 @@ const coordinator = new MigrationCoordinator({
 });
 await coordinator.migrate();
 ```
+
+Concurrent e2e lives in this package (`tests/e2e/postgres`, `tests/e2e/mysql`), not in the dialect packages.
+
+```bash
+npm run test:e2e:typeorm:postgres
+npm run test:e2e:typeorm:mysql
+```
+

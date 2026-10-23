@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SUITE="${1:-typeorm}"
+SUITE="${1:-mysql2}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SUITE_DIR="${SCRIPT_DIR}/${SUITE}"
 

@@ -13,6 +13,9 @@
     "clean": "rm -rf dist *.tsbuildinfo",
     "test": "jest --config tests/jest.config.unit.js",
     "test:unit": "jest --config tests/jest.config.unit.js",
+    "test:e2e": "./tests/e2e/run-test.sh postgres && ./tests/e2e/run-test.sh mysql",
+    "test:e2e:postgres": "./tests/e2e/run-test.sh postgres",
+    "test:e2e:mysql": "./tests/e2e/run-test.sh mysql",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

@@ -220,9 +220,9 @@ npm test
 
 # Concurrent e2e (podman-compose or docker compose), one suite per adapter
 npm run test:e2e:postgres:node-pg
-npm run test:e2e:postgres:typeorm
-npm run test:e2e:mysql:typeorm
 npm run test:e2e:mysql:mysql2
+npm run test:e2e:typeorm:postgres
+npm run test:e2e:typeorm:mysql
 ```
 
 SQLite is still out of scope. Multi-replica TypeORM apps live in [`examples/`](./examples) (NestJS, Express, Fastify) against Postgres and MySQL.

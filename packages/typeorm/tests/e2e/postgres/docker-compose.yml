@@ -16,12 +16,12 @@ services:
       - migration-net
 
   migrator-1:
-    image: nodejs-db-migration-lock-e2e-pg-typeorm:local
+    image: nodejs-db-migration-lock-e2e-typeorm-postgres:local
     build:
       context: ../../../../../
-      dockerfile: packages/postgres/tests/e2e/Dockerfile
+      dockerfile: packages/typeorm/tests/e2e/Dockerfile
       args:
-        E2E_SUITE: typeorm
+        E2E_SUITE: postgres
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -37,12 +37,12 @@ services:
     command: ["node", "dist/migrate.js"]
 
   migrator-2:
-    image: nodejs-db-migration-lock-e2e-pg-typeorm:local
+    image: nodejs-db-migration-lock-e2e-typeorm-postgres:local
     build:
       context: ../../../../../
-      dockerfile: packages/postgres/tests/e2e/Dockerfile
+      dockerfile: packages/typeorm/tests/e2e/Dockerfile
       args:
-        E2E_SUITE: typeorm
+        E2E_SUITE: postgres
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -58,12 +58,12 @@ services:
     command: ["node", "dist/migrate.js"]
 
   migrator-3:
-    image: nodejs-db-migration-lock-e2e-pg-typeorm:local
+    image: nodejs-db-migration-lock-e2e-typeorm-postgres:local
     build:
       context: ../../../../../
-      dockerfile: packages/postgres/tests/e2e/Dockerfile
+      dockerfile: packages/typeorm/tests/e2e/Dockerfile
       args:
-        E2E_SUITE: typeorm
+        E2E_SUITE: postgres
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -79,12 +79,12 @@ services:
     command: ["node", "dist/migrate.js"]
 
   test-runner:
-    image: nodejs-db-migration-lock-e2e-pg-typeorm:local
+    image: nodejs-db-migration-lock-e2e-typeorm-postgres:local
     build:
       context: ../../../../../
-      dockerfile: packages/postgres/tests/e2e/Dockerfile
+      dockerfile: packages/typeorm/tests/e2e/Dockerfile
       args:
-        E2E_SUITE: typeorm
+        E2E_SUITE: postgres
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432

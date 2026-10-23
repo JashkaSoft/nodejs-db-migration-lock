@@ -9,13 +9,11 @@ COPY lerna.json ./
 COPY tsconfig.json ./
 COPY packages/core/package.json packages/core/tsconfig.json ./packages/core/
 COPY packages/postgres/package.json packages/postgres/tsconfig.json ./packages/postgres/
-COPY packages/typeorm/package.json packages/typeorm/tsconfig.json ./packages/typeorm/
 
 RUN npm install
 
 COPY packages/core/src ./packages/core/src
 COPY packages/postgres/src ./packages/postgres/src
-COPY packages/typeorm/src ./packages/typeorm/src
 
 RUN npm run build
 
