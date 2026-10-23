@@ -149,9 +149,13 @@ const driver = new MyCustomDriver(myClient);
 - `KnexDriver` - wraps a Knex instance
 - Pair with a dialect lock package (`postgres`, `mysql`, …)
 
+### @nodejs-db-migration-lock/sqlite
+**SQLite-specific implementations**
+- `SqliteTableLock` - `INSERT OR IGNORE` into a one-row lock table
+- `NodeSqliteDriver` - Node.js `node:sqlite` `DatabaseSync`
+
 ### Other packages
 - `@nodejs-db-migration-lock/mysql` - MySQL/MariaDB locks + `Mysql2Driver`
-- `@nodejs-db-migration-lock/sqlite` - SQLite support (planned)
 - `@nodejs-db-migration-lock/mssql` - Microsoft SQL Server support (planned)
 
 ## Lock Strategies
@@ -301,7 +305,7 @@ class MySQLTableLock implements LockProvider {
 }
 ```
 
-4. **No changes to core or query-layer adapters.** Keep TypeORM/Sequelize/Knex in their own packages; dialect packages only add locks and native clients.
+4. **No changes to core or query-layer adapters.** Keep TypeORM/Sequelize/Knex in their own packages; dialect packages only add locks and native clients (`postgres`, `mysql`, `sqlite`, …).
 
 ## Benefits of This Architecture
 
