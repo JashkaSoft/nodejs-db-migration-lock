@@ -27,6 +27,7 @@ This is a monorepo containing multiple packages:
 | [@nodejs-db-migration-lock/core](./packages/core) | Core interfaces and coordination logic | 0.1.0 |
 | [@nodejs-db-migration-lock/postgres](./packages/postgres) | PostgreSQL adapter with advisory and table locks | 0.1.0 |
 | [@nodejs-db-migration-lock/mysql](./packages/mysql) | MySQL/MariaDB adapter (`GET_LOCK` + table lock) | 0.1.0 |
+| [@nodejs-db-migration-lock/typeorm](./packages/typeorm) | TypeORM `DataSource` driver (DB-agnostic) | 0.1.0 |
 | `@nodejs-db-migration-lock/sqlite` | SQLite adapter | Coming soon |
 
 ## 🚀 Quick Start
@@ -36,11 +37,14 @@ This is a monorepo containing multiple packages:
 ```bash
 # For PostgreSQL
 npm install @nodejs-db-migration-lock/core @nodejs-db-migration-lock/postgres
-npm install pg  # or typeorm
+npm install pg
 
 # For MySQL
 npm install @nodejs-db-migration-lock/core @nodejs-db-migration-lock/mysql
-npm install mysql2  # or typeorm mysql2
+npm install mysql2
+
+# TypeORM (any supported database)
+npm install @nodejs-db-migration-lock/typeorm typeorm
 ```
 
 ### Basic Usage with TypeORM
@@ -48,7 +52,8 @@ npm install mysql2  # or typeorm mysql2
 ```typescript
 import { DataSource } from 'typeorm';
 import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
-import { TypeORMDriver, PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
+import { TypeORMDriver } from '@nodejs-db-migration-lock/typeorm';
+import { PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
 
 // Initialize your database connection
 const dataSource = new DataSource({
@@ -132,6 +137,8 @@ The `MigrationCoordinator` orchestrates these three pieces with retry logic, err
 
 - [Core Package Documentation](./packages/core/README.md)
 - [PostgreSQL Package Documentation](./packages/postgres/README.md)
+- [MySQL Package Documentation](./packages/mysql/README.md)
+- [TypeORM Package Documentation](./packages/typeorm/README.md)
 - [Examples](./examples)
 
 ## 🔍 Use Cases

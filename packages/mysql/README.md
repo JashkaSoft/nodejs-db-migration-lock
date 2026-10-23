@@ -7,13 +7,13 @@ MySQL/MariaDB adapter with `GET_LOCK()` advisory locks and table-based locks.
 ```bash
 npm install @nodejs-db-migration-lock/core @nodejs-db-migration-lock/mysql
 npm install mysql2
-# or
-npm install typeorm mysql2
+# TypeORM
+npm install @nodejs-db-migration-lock/typeorm typeorm mysql2
 ```
 
 ## Lock strategies
 
-**Advisory (`GET_LOCK`)** — session-level, no extra table. Use `Mysql2Driver` (or a TypeORM driver that keeps one connection).
+**Advisory (`GET_LOCK`)** — session-level, no extra table. Use `Mysql2Driver` (or `@nodejs-db-migration-lock/typeorm` with a pinned connection).
 
 **Table lock** — `INSERT IGNORE` into a one-row lock table. Survives reconnects until released.
 
