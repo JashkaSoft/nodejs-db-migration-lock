@@ -12,7 +12,7 @@ class MockSqliteDriver implements SqlDriver {
       throw new Error('Query failed');
     }
     const normalized = sql.replace(/\s+/g, ' ').trim().toLowerCase();
-    if (normalized.includes('insert or ignore')) {
+    if (normalized.includes('insert') || normalized.includes('update')) {
       return [{ changes: this.insertChanges, affectedRows: this.insertChanges }] as T[];
     }
     if (normalized.includes('select 1')) {
@@ -48,7 +48,8 @@ describe('SqliteTableLock', () => {
     const lock = new SqliteTableLock();
     await lock.release(driver);
     expect(driver.queries[0].sql).toContain('DELETE FROM "migration_lock"');
-    expect(driver.queries[0].params).toEqual([1]);
+    expect(driver.queries[0].params?.[0]).toBe(1);
+    expect(driver.queries[0].params?.[1]).toBe(lock.holder);
   });
 
   it('rejects unsafe table names', async () => {
