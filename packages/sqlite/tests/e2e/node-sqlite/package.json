@@ -1,0 +1,13 @@
+{
+  "name": "e2e-sqlite-node-sqlite",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "file:../../../../core",
+    "@nodejs-db-migration-lock/sqlite": "file:../../../../sqlite"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
