@@ -1,0 +1,22 @@
+{
+  "name": "nestjs-sqlite-replicas-example",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "@nodejs-db-migration-lock/core": "file:../../packages/core",
+    "@nodejs-db-migration-lock/sqlite": "file:../../packages/sqlite",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}

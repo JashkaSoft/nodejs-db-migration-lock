@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  replica-1:
+    image: migration-lock-nestjs-sqlite:local
+    build:
+      context: ../..
+      dockerfile: examples/nestjs-sqlite/Dockerfile
+    environment:
+      SQLITE_PATH: /data/app.db
+      REPLICA_ID: sqlite-1
+      PORT: 3000
+    volumes:
+      - sqlite-data:/data
+    ports:
+      - "3501:3000"
+
+  replica-2:
+    image: migration-lock-nestjs-sqlite:local
+    build:
+      context: ../..
+      dockerfile: examples/nestjs-sqlite/Dockerfile
+    environment:
+      SQLITE_PATH: /data/app.db
+      REPLICA_ID: sqlite-2
+      PORT: 3000
+    volumes:
+      - sqlite-data:/data
+    ports:
+      - "3502:3000"
+
+  replica-3:
+    image: migration-lock-nestjs-sqlite:local
+    build:
+      context: ../..
+      dockerfile: examples/nestjs-sqlite/Dockerfile
+    environment:
+      SQLITE_PATH: /data/app.db
+      REPLICA_ID: sqlite-3
+      PORT: 3000
+    volumes:
+      - sqlite-data:/data
+    ports:
+      - "3503:3000"
+
+volumes:
+  sqlite-data:
