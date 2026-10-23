@@ -47,6 +47,26 @@ jobs:
       - name: TypeORM MySQL e2e
         run: npm run test:e2e:typeorm:mysql
 
+  e2e-sequelize-postgres:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: Sequelize PostgreSQL e2e
+        run: npm run test:e2e:sequelize:postgres
+
+  e2e-sequelize-mysql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: Sequelize MySQL e2e
+        run: npm run test:e2e:sequelize:mysql
+
   e2e-mysql-mysql2:
     runs-on: ubuntu-latest
     steps:
