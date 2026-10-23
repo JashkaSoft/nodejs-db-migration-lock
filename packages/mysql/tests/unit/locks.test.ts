@@ -8,19 +8,19 @@ describe('MySQLAdvisoryLock', () => {
     const lock = new MySQLAdvisoryLock({ lockName: 'mig' });
     await expect(lock.acquire(driver)).resolves.toBe(true);
     expect(driver.queries[0].sql).toContain('GET_LOCK');
-    expect(driver.queries[0].params).toEqual(['mig']);
+    expect(driver.queries[0].params).toEqual(['mig', 0]);
   });
 
   it('fails acquire when GET_LOCK returns 0', async () => {
     const driver = new MockMysqlDriver();
     driver.acquireResult = 0;
-    const lock = new MySQLAdvisoryLock();
+    const lock = new MySQLAdvisoryLock({ lockName: 'nodejs_db_migration_lock' });
     await expect(lock.acquire(driver)).resolves.toBe(false);
   });
 
   it('releases with RELEASE_LOCK', async () => {
     const driver = new MockMysqlDriver();
-    const lock = new MySQLAdvisoryLock();
+    const lock = new MySQLAdvisoryLock({ lockName: 'nodejs_db_migration_lock' });
     await lock.release(driver);
     expect(driver.queries[0].sql).toContain('RELEASE_LOCK');
   });

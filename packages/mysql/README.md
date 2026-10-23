@@ -23,7 +23,7 @@ npm install @nodejs-db-migration-lock/knex knex mysql2
 
 **Table lock** — `INSERT IGNORE` into a one-row lock table. Survives reconnects until released.
 
-On first use it creates `migration_lock` (or `tableName`). That needs `CREATE` on the database unless an admin pre-creates the table. `GET_LOCK` advisory locks create no tables.
+On first use the table lock creates `migration_lock` (or `tableName`) with `holder`, `locked_at`, and `expires_at`. That needs `CREATE` on the database unless an admin pre-creates the table. Omit `lockName` and `GET_LOCK` uses `nodejs_db_migration_lock:<database>`, because MySQL named locks are server-wide.
 
 ## Usage
 
