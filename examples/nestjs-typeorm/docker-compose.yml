@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: docker.io/library/postgres:16-alpine
+    image: docker.io/library/postgres:18-alpine
     environment:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: app
@@ -14,7 +14,7 @@ services:
       retries: 10
 
   mysql:
-    image: docker.io/library/mysql:8.4
+    image: docker.io/library/mysql:9.7
     environment:
       MYSQL_ROOT_PASSWORD: app
       MYSQL_DATABASE: app
