@@ -9,7 +9,7 @@ services:
       MYSQL_USER: testuser
       MYSQL_PASSWORD: testpass
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -utestuser -ptestpass --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -utestuser -ptestpass --silent || mariadb-admin ping -h 127.0.0.1 -utestuser -ptestpass --silent"]
       interval: 3s
       timeout: 5s
       retries: 20
