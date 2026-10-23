@@ -1,5 +1,4 @@
 import { Mysql2Driver } from '../../src/mysql2-driver';
-import { TypeORMDriver } from '../../src/typeorm-driver';
 
 describe('Mysql2Driver', () => {
   it('pins a pool connection for all queries', async () => {
@@ -32,26 +31,5 @@ describe('Mysql2Driver', () => {
     expect(session.queries).toEqual(['SELECT 1', 'SELECT 2']);
     await driver.close();
     expect(session.released).toBe(true);
-  });
-});
-
-describe('TypeORMDriver', () => {
-  it('requires an initialized DataSource', () => {
-    expect(() => new TypeORMDriver({ isInitialized: false })).toThrow(
-      'must be initialized',
-    );
-  });
-
-  it('delegates query to DataSource', async () => {
-    const dataSource = {
-      isInitialized: true,
-      async query(sql: string, params?: any[]) {
-        return [{ sql, params }];
-      },
-    };
-    const driver = new TypeORMDriver(dataSource);
-    await expect(driver.query('SELECT 1', [1])).resolves.toEqual([
-      { sql: 'SELECT 1', params: [1] },
-    ]);
   });
 });

@@ -1,7 +1,8 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
-import { TypeORMDriver, MySQLTableLock } from '@nodejs-db-migration-lock/mysql';
+import { MySQLTableLock } from '@nodejs-db-migration-lock/mysql';
+import { TypeORMDriver } from '@nodejs-db-migration-lock/typeorm';
 
 const PROCESS_ID = process.env.PROCESS_ID || 'unknown';
 

@@ -181,35 +181,3 @@ export class MockPgClient {
   }
 }
 
-/**
- * Mock TypeORM DataSource for testing TypeORMDriver
- */
-export class MockTypeORMDataSource {
-  public isInitialized = true;
-  public queries: Array<{ sql: string; params?: any[] }> = [];
-  public shouldFail = false;
-  public transactionCalled = false;
-
-  async query(sql: string, params?: any[]): Promise<any[]> {
-    this.queries.push({ sql, params });
-
-    if (this.shouldFail) {
-      throw new Error('TypeORM query failed');
-    }
-
-    return [];
-  }
-
-  async transaction(fn: (manager: any) => Promise<any>): Promise<any> {
-    this.transactionCalled = true;
-    const manager = {
-      query: this.query.bind(this),
-    };
-    return fn(manager);
-  }
-
-  async destroy(): Promise<void> {
-    this.isInitialized = false;
-  }
-}
-

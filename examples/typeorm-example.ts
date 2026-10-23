@@ -4,10 +4,8 @@
 
 import { DataSource } from 'typeorm';
 import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
-import { 
-  TypeORMDriver, 
-  PostgresTableLock 
-} from '@nodejs-db-migration-lock/postgres';
+import { PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
+import { TypeORMDriver } from '@nodejs-db-migration-lock/typeorm';
 
 // Configure your TypeORM DataSource
 const AppDataSource = new DataSource({
