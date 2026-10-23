@@ -1,0 +1,20 @@
+{
+  "name": "express-mssql-replicas-example",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "file:../../packages/core",
+    "@nodejs-db-migration-lock/mssql": "file:../../packages/mssql",
+    "express": "^5.1.0",
+    "tedious": "^19.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
