@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  mysql:
+    image: docker.io/library/mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: app
+      MYSQL_DATABASE: app
+      MYSQL_USER: app
+      MYSQL_PASSWORD: app
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uapp -papp --silent"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  pg-replica-1:
+    image: migration-lock-nestjs:local
+    build:
+      context: ../..
+      dockerfile: examples/nestjs-typeorm/Dockerfile
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: app
+      DB_PASSWORD: app
+      DB_NAME: app
+      REPLICA_ID: pg-1
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3001:3000"
+
+  pg-replica-2:
+    image: migration-lock-nestjs:local
+    build:
+      context: ../..
+      dockerfile: examples/nestjs-typeorm/Dockerfile
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: app
+      DB_PASSWORD: app
+      DB_NAME: app
+      REPLICA_ID: pg-2
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3002:3000"
+
+  pg-replica-3:
+    image: migration-lock-nestjs:local
+    build:
+      context: ../..
+      dockerfile: examples/nestjs-typeorm/Dockerfile
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: app
+      DB_PASSWORD: app
+      DB_NAME: app
+      REPLICA_ID: pg-3
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3003:3000"
+
+  mysql-replica-1:
+    image: migration-lock-nestjs:local
+    build:
+      context: ../..
+      dockerfile: examples/nestjs-typeorm/Dockerfile
+    environment:
+      DB_TYPE: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: app
+      DB_PASSWORD: app
+      DB_NAME: app
+      REPLICA_ID: mysql-1
+      PORT: 3000
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "3011:3000"
+
+  mysql-replica-2:
+    image: migration-lock-nestjs:local
+    build:
+      context: ../..
+      dockerfile: examples/nestjs-typeorm/Dockerfile
+    environment:
+      DB_TYPE: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: app
+      DB_PASSWORD: app
+      DB_NAME: app
+      REPLICA_ID: mysql-2
+      PORT: 3000
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "3012:3000"
+
+  mysql-replica-3:
+    image: migration-lock-nestjs:local
+    build:
+      context: ../..
+      dockerfile: examples/nestjs-typeorm/Dockerfile
+    environment:
+      DB_TYPE: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: app
+      DB_PASSWORD: app
+      DB_NAME: app
+      REPLICA_ID: mysql-3
+      PORT: 3000
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "3013:3000"

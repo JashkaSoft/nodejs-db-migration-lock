@@ -1,0 +1,23 @@
+{
+  "name": "fastify-typeorm-replicas-example",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "file:../../packages/core",
+    "@nodejs-db-migration-lock/mysql": "file:../../packages/mysql",
+    "@nodejs-db-migration-lock/postgres": "file:../../packages/postgres",
+    "fastify": "^5.6.1",
+    "mysql2": "^3.15.3",
+    "pg": "^8.23.1",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.27"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
