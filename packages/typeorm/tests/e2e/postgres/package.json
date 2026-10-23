@@ -7,8 +7,7 @@
     "@nodejs-db-migration-lock/postgres": "file:../../../../postgres",
     "@nodejs-db-migration-lock/typeorm": "file:../../../../typeorm",
     "pg": "^8.23.1",
-    "reflect-metadata": "^0.2.2",
-    "typeorm": "^0.3.27"
+    "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

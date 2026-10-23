@@ -79,12 +79,12 @@ services:
     command: ["node", "dist/migrate.js"]
 
   test-runner:
-    image: nodejs-db-migration-lock-e2e-sequelize-postgres:local
+    image: nodejs-db-migration-lock-e2e-pg-node-pg:local
     build:
       context: ../../../../../
-      dockerfile: packages/sequelize/tests/e2e/Dockerfile
+      dockerfile: packages/postgres/tests/e2e/Dockerfile
       args:
-        E2E_SUITE: postgres
+        E2E_SUITE: node-pg
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432

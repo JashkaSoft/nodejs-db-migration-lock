@@ -12,5 +12,5 @@
     "emitDecoratorMetadata": true,
     "moduleResolution": "bundler"
   },
-  "include": ["migrate.ts", "verify.ts"]
+  "include": ["migrate.ts"]
 }
