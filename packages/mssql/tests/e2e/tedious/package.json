@@ -1,0 +1,14 @@
+{
+  "name": "e2e-mssql-tedious",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "file:../../../../core",
+    "@nodejs-db-migration-lock/mssql": "file:../../../../mssql",
+    "tedious": "^19.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
