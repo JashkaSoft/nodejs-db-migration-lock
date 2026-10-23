@@ -17,12 +17,42 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  e2e-postgres:
+  e2e-postgres-node-pg:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 26
-      - name: Run PostgreSQL e2e tests
-        run: npm run test:e2e:postgres
+      - name: PostgreSQL node-pg e2e
+        run: npm run test:e2e:postgres:node-pg
+
+  e2e-postgres-typeorm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: PostgreSQL TypeORM e2e
+        run: npm run test:e2e:postgres:typeorm
+
+  e2e-mysql-typeorm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: MySQL TypeORM e2e
+        run: npm run test:e2e:mysql:typeorm
+
+  e2e-mysql-mysql2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: MySQL mysql2 e2e
+        run: npm run test:e2e:mysql:mysql2
