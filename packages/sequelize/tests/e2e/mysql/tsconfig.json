@@ -13,5 +13,5 @@
     "moduleResolution": "bundler",
     "types": ["node"]
   },
-  "include": ["migrate.ts", "verify.ts"]
+  "include": ["migrate.ts"]
 }

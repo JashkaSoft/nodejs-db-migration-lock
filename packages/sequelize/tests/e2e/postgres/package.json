@@ -6,8 +6,7 @@
     "@nodejs-db-migration-lock/core": "file:../../../../core",
     "@nodejs-db-migration-lock/postgres": "file:../../../../postgres",
     "@nodejs-db-migration-lock/sequelize": "file:../../../../sequelize",
-    "pg": "^8.23.1",
-    "sequelize": "^6.37.8"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
