@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Migration_Lock_1"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Migration_Lock_1' -C -Q 'SELECT 1' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 25s
+
+  replica-1:
+    image: migration-lock-express-mssql:local
+    build:
+      context: ../..
+      dockerfile: examples/express-mssql/Dockerfile
+    environment: &db
+      MSSQL_HOST: mssql
+      MSSQL_PORT: 1433
+      MSSQL_USER: sa
+      MSSQL_PASSWORD: Migration_Lock_1
+      MSSQL_DB: app
+      REPLICA_ID: mssql-1
+      PORT: 3000
+    depends_on:
+      mssql:
+        condition: service_healthy
+    ports:
+      - "3701:3000"
+
+  replica-2:
+    image: migration-lock-express-mssql:local
+    build:
+      context: ../..
+      dockerfile: examples/express-mssql/Dockerfile
+    environment:
+      <<: *db
+      REPLICA_ID: mssql-2
+    depends_on:
+      mssql:
+        condition: service_healthy
+    ports:
+      - "3702:3000"
+
+  replica-3:
+    image: migration-lock-express-mssql:local
+    build:
+      context: ../..
+      dockerfile: examples/express-mssql/Dockerfile
+    environment:
+      <<: *db
+      REPLICA_ID: mssql-3
+    depends_on:
+      mssql:
+        condition: service_healthy
+    ports:
+      - "3703:3000"

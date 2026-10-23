@@ -6,7 +6,7 @@ Standalone TypeORM snippets:
 - `node-pg-example.ts`
 - `custom-database-example.ts`
 
-Runnable multi-replica apps (Postgres **and** MySQL, three replicas each; SQLite shares one file):
+Runnable multi-replica apps (Postgres and MySQL, three replicas each; SQLite shares one file; SQL Server is one database for Nest and Express):
 
 | App | Stack | Compose |
 |-----|--------|---------|
@@ -16,5 +16,7 @@ Runnable multi-replica apps (Postgres **and** MySQL, three replicas each; SQLite
 | [`fastify-typeorm`](./fastify-typeorm) | Fastify + TypeORM | ports 3201–3203 / 3211–3213 |
 | [`nestjs-knex`](./nestjs-knex) | NestJS + `@nodejs-db-migration-lock/knex` | ports 3401–3403 / 3411–3413 |
 | [`nestjs-sqlite`](./nestjs-sqlite) | NestJS + `@nodejs-db-migration-lock/sqlite` | ports 3501–3503 |
+| [`nestjs-mssql`](./nestjs-mssql) | NestJS + `@nodejs-db-migration-lock/mssql` | ports 3601–3603 |
+| [`express-mssql`](./express-mssql) | Express + `@nodejs-db-migration-lock/mssql` | ports 3701–3703 |
 
 From the repo root, build packages first (`npm install && npm run build`), then `podman-compose up --build` inside an example directory.
