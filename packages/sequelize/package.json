@@ -1,0 +1,56 @@
+{
+  "name": "@nodejs-db-migration-lock/sequelize",
+  "version": "0.1.0",
+  "description": "Sequelize adapter for database migration locking",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "jest --config tests/jest.config.unit.js",
+    "test:unit": "jest --config tests/jest.config.unit.js",
+    "test:e2e": "./tests/e2e/run-test.sh postgres && ./tests/e2e/run-test.sh mysql",
+    "test:e2e:postgres": "./tests/e2e/run-test.sh postgres",
+    "test:e2e:mysql": "./tests/e2e/run-test.sh mysql",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "database",
+    "migration",
+    "lock",
+    "sequelize"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/nodejs-db-migration-lock.git",
+    "directory": "packages/sequelize"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "@types/node": "^26.6.5",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "jest": "30.5.2",
+    "ts-jest": "29.4.15",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
+  },
+  "peerDependencies": {
+    "sequelize": "^6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "sequelize": {
+      "optional": true
+    }
+  }
+}
