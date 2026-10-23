@@ -58,6 +58,19 @@ async function main(): Promise<void> {
   const users = db.prepare('SELECT * FROM users ORDER BY created_at').all() as unknown[];
   add('users', users.length === expected, `${users.length} users`);
 
+  const steps = db
+    .prepare('SELECT process_id, step FROM migration_steps ORDER BY id')
+    .all() as Array<{ process_id: string; step: number }>;
+  const stepCount = expected * 25;
+  add('steps', steps.length === stepCount, `${steps.length} of ${stepCount}`);
+  let runs = steps.length === 0 ? 0 : 1;
+  for (let index = 1; index < steps.length; index += 1) {
+    if (steps[index].process_id !== steps[index - 1].process_id) {
+      runs += 1;
+    }
+  }
+  add('no interleave', runs === expected, `${runs} contiguous runs`);
+
   const locks = db.prepare('SELECT * FROM migration_lock WHERE id = 1').all() as unknown[];
   add('lock released', locks.length === 0, `${locks.length} lock rows`);
 

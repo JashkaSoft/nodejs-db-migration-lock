@@ -10,6 +10,8 @@ const SQLITE_PATH = process.env.SQLITE_PATH || '/data/migration_test.db';
 mkdirSync(dirname(SQLITE_PATH), { recursive: true });
 const db = new DatabaseSync(SQLITE_PATH, { timeout: 5000 });
 
+const MIGRATION_STEPS = 25;
+
 class SqliteTestRunner implements MigrationRunner {
   constructor(private readonly processId: string) {}
 
@@ -33,6 +35,20 @@ class SqliteTestRunner implements MigrationRunner {
         created_by TEXT
       )
     `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS migration_steps (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        process_id TEXT NOT NULL,
+        step INTEGER NOT NULL
+      )
+    `);
+    const insertStep = db.prepare(
+      'INSERT INTO migration_steps (process_id, step) VALUES (?, ?)',
+    );
+    for (let step = 1; step <= MIGRATION_STEPS; step += 1) {
+      insertStep.run(this.processId, step);
+      await new Promise((resolve) => setTimeout(resolve, 120));
+    }
     db.prepare(
       'INSERT OR IGNORE INTO users (email, name, created_by) VALUES (?, ?, ?)',
     ).run(
@@ -40,7 +56,6 @@ class SqliteTestRunner implements MigrationRunner {
       `Process ${this.processId}`,
       this.processId,
     );
-    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 }
 
@@ -75,9 +90,11 @@ async function runMigration(): Promise<void> {
   try {
     const coordinator = new MigrationCoordinator({
       driver,
-      lockProvider: new SqliteTableLock(),
+      // Shorter than the 25-step run, so a missed heartbeat lets another process in.
+      lockProvider: new SqliteTableLock({ leaseMs: 2000 }),
       migrationRunner: new SqliteTestRunner(PROCESS_ID),
-      retryConfig: { maxRetries: 30, retryIntervalMs: 1000 },
+      renewIntervalMs: 500,
+      retryConfig: { maxRetries: 60, retryIntervalMs: 500, timeoutMs: 120000 },
       onLockWaiting: (attempt, max) =>
         console.log(`[Process ${PROCESS_ID}] Waiting for lock... (${attempt}/${max})`),
       onLockAcquired: () => {
