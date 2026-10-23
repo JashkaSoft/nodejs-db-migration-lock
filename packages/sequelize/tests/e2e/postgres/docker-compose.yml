@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: docker.io/library/postgres:18-alpine
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: migration_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d migration_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    networks:
+      - migration-net
+
+  migrator-1:
+    image: nodejs-db-migration-lock-e2e-sequelize-postgres:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/sequelize/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: postgres
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: migration_test
+      PROCESS_ID: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - migration-net
+    command: ["node", "dist/migrate.js"]
+
+  migrator-2:
+    image: nodejs-db-migration-lock-e2e-sequelize-postgres:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/sequelize/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: postgres
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: migration_test
+      PROCESS_ID: 2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - migration-net
+    command: ["node", "dist/migrate.js"]
+
+  migrator-3:
+    image: nodejs-db-migration-lock-e2e-sequelize-postgres:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/sequelize/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: postgres
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: migration_test
+      PROCESS_ID: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - migration-net
+    command: ["node", "dist/migrate.js"]
+
+  test-runner:
+    image: nodejs-db-migration-lock-e2e-sequelize-postgres:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/sequelize/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: postgres
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: migration_test
+      EXPECTED_PROCESSES: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - migration-net
+    command: ["node", "dist/verify.js"]
+
+networks:
+  migration-net:
+    driver: bridge
