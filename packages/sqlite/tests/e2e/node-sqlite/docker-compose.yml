@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  migrator-1:
+    image: nodejs-db-migration-lock-e2e-sqlite-node-sqlite:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/sqlite/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: node-sqlite
+    environment:
+      SQLITE_PATH: /data/migration_test.db
+      PROCESS_ID: "1"
+    volumes:
+      - sqlite-data:/data
+    command: ["node", "dist/migrate.js"]
+
+  migrator-2:
+    image: nodejs-db-migration-lock-e2e-sqlite-node-sqlite:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/sqlite/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: node-sqlite
+    environment:
+      SQLITE_PATH: /data/migration_test.db
+      PROCESS_ID: "2"
+    volumes:
+      - sqlite-data:/data
+    command: ["node", "dist/migrate.js"]
+
+  migrator-3:
+    image: nodejs-db-migration-lock-e2e-sqlite-node-sqlite:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/sqlite/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: node-sqlite
+    environment:
+      SQLITE_PATH: /data/migration_test.db
+      PROCESS_ID: "3"
+    volumes:
+      - sqlite-data:/data
+    command: ["node", "dist/migrate.js"]
+
+  test-runner:
+    image: nodejs-db-migration-lock-e2e-sqlite-node-sqlite:local
+    build:
+      context: ../../../../../
+      dockerfile: packages/sqlite/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: node-sqlite
+    environment:
+      SQLITE_PATH: /data/migration_test.db
+      EXPECTED_PROCESSES: "3"
+    volumes:
+      - sqlite-data:/data
+    command: ["node", "dist/verify.js"]
+
+volumes:
+  sqlite-data:
