@@ -1,0 +1,16 @@
+{
+  "name": "e2e-postgres-typeorm",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "file:../../../../core",
+    "@nodejs-db-migration-lock/postgres": "file:../../../../postgres",
+    "pg": "^8.23.1",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.27"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
