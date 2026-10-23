@@ -1,6 +1,5 @@
 import { SqlDriver } from '@nodejs-db-migration-lock/core';
-
-type KnexLike = any;
+import type { Knex } from 'knex';
 
 /** Knex only interpolates `?`; lock SQL uses native `$1` on Postgres. */
 function toKnexSql(sql: string): string {
@@ -35,23 +34,23 @@ function unwrapKnexResult<T>(result: unknown): T[] {
  * Database-agnostic: pair with a lock provider from postgres, mysql, or another dialect package.
  */
 export class KnexDriver implements SqlDriver {
-  constructor(private knex: KnexLike) {
+  constructor(private knex: Knex) {
     if (!knex || typeof knex.raw !== 'function') {
       throw new Error('KnexDriver requires a Knex instance');
     }
   }
 
-  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     const knexSql = toKnexSql(sql);
     const result =
       params === undefined
         ? await this.knex.raw(knexSql)
-        : await this.knex.raw(knexSql, params);
+        : await this.knex.raw(knexSql, params as Knex.RawBinding[]);
     return unwrapKnexResult<T>(result);
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {
-    return this.knex.transaction(async (trx: KnexLike) => {
+    return this.knex.transaction(async (trx) => {
       const previous = this.knex;
       this.knex = trx;
       try {

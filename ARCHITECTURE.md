@@ -34,7 +34,7 @@ The **abstraction** that allows any database client to work with the library.
 
 ```typescript
 interface SqlDriver {
-  query<T>(sql: string, params?: any[]): Promise<T[]>;
+  query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]>;
   transaction?<T>(fn: () => Promise<T>): Promise<T>;
   close?(): Promise<void>;
 }
@@ -102,13 +102,17 @@ const driver = new NodePgDriver(pool);
 ```typescript
 import { SqlDriver } from '@nodejs-db-migration-lock/core';
 
+interface MyDbClient {
+  execute(sql: string, params?: unknown[]): Promise<{ rows: unknown[] }>;
+}
+
 class MyCustomDriver implements SqlDriver {
-  constructor(private myDbClient: any) {}
+  constructor(private myDbClient: MyDbClient) {}
   
-  async query<T>(sql: string, params?: any[]): Promise<T[]> {
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     // Adapt your client's query method
     const result = await this.myDbClient.execute(sql, params);
-    return result.rows;
+    return result.rows as T[];
   }
 }
 

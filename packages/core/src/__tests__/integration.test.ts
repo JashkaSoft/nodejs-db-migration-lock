@@ -14,13 +14,13 @@ import {
  * In-memory database simulator for E2E tests
  */
 class InMemoryDatabase {
-  private data: Map<string, any> = new Map();
+  private data: Map<string, unknown> = new Map();
 
-  set(key: string, value: any): void {
+  set(key: string, value: unknown): void {
     this.data.set(key, value);
   }
 
-  get(key: string): any {
+  get(key: string): unknown {
     return this.data.get(key);
   }
 
@@ -43,7 +43,7 @@ class InMemoryDatabase {
 class TestSqlDriver implements SqlDriver {
   constructor(private db: InMemoryDatabase) {}
 
-  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     // Simulate table existence check
     if (sql.includes('information_schema.tables')) {
       return [{ exists: this.db.has('table:migration_lock') }] as T[];

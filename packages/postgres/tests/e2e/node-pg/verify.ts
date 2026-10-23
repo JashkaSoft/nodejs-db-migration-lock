@@ -12,12 +12,12 @@ interface VerificationResult {
   test: string;
   passed: boolean;
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 const results: VerificationResult[] = [];
 
-function addResult(test: string, passed: boolean, message: string, details?: any) {
+function addResult(test: string, passed: boolean, message: string, details?: unknown) {
   results.push({ test, passed, message, details });
   const icon = passed ? '✅' : '❌';
   console.log(`${icon} ${test}: ${message}`);
@@ -171,7 +171,7 @@ async function verify(): Promise<void> {
       );
     } catch (error) {
       // Table might not exist if advisory lock was used
-      if ((error as any).code === '42P01') {
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === '42P01') {
         addResult(
           'Lock Released',
           true,

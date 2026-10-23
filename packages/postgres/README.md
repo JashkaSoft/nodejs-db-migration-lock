@@ -184,7 +184,7 @@ import { Client } from 'pg';
 class MyCustomDriver implements SqlDriver {
   constructor(private client: Client) {}
   
-  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     const result = await this.client.query(sql, params);
     return result.rows as T[];
   }

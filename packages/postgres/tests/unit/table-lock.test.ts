@@ -73,7 +73,7 @@ describe('PostgresTableLock', () => {
       // Simulate error during table creation
       const originalQuery = driver.query.bind(driver);
       let callCount = 0;
-      driver.query = async (sql: string, params?: any[]) => {
+      driver.query = async (sql: string, params?: unknown[]) => {
         callCount++;
         if (callCount === 3) { // Fail on sequence creation
           throw new Error('Simulated error');

@@ -11,12 +11,26 @@ import {
 import { PostgresAdvisoryLock } from '../../src/advisory-lock';
 import { PostgresTableLock } from '../../src/table-lock';
 
+function asNumber(value: unknown): number {
+  if (typeof value !== 'number') {
+    throw new Error('Expected numeric SQL parameter');
+  }
+  return value;
+}
+
+function asString(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new Error('Expected string SQL parameter');
+  }
+  return value;
+}
+
 /**
  * In-memory PostgreSQL simulator for E2E tests
  */
 class PostgresSimulator {
   private advisoryLocks = new Set<number>();
-  private tables = new Map<string, Map<number, any>>();
+  private tables = new Map<string, Map<number, Record<string, unknown>>>();
   private tableDefinitions = new Set<string>();
 
   // Advisory locks
@@ -46,7 +60,7 @@ class PostgresSimulator {
     this.tables.set(tableName, new Map());
   }
 
-  insertRow(tableName: string, id: number, data: any): boolean {
+  insertRow(tableName: string, id: number, data: Record<string, unknown>): boolean {
     const table = this.tables.get(tableName);
     if (!table) return false;
     
@@ -64,7 +78,7 @@ class PostgresSimulator {
     return table.delete(id);
   }
 
-  getRow(tableName: string, id: number): any | undefined {
+  getRow(tableName: string, id: number): Record<string, unknown> | undefined {
     return this.tables.get(tableName)?.get(id);
   }
 
@@ -85,25 +99,25 @@ class PostgresSimulator {
 class TestPostgresDriver implements SqlDriver {
   constructor(private db: PostgresSimulator) {}
 
-  async query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+  async query<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
     const normalizedSql = sql.toLowerCase().trim();
 
     // Advisory lock operations
     if (normalizedSql.includes('pg_try_advisory_lock')) {
-      const lockId = params[0];
+      const lockId = asNumber(params[0]);
       const success = this.db.tryAdvisoryLock(lockId);
       return [{ pg_try_advisory_lock: success }] as T[];
     }
 
     if (normalizedSql.includes('pg_advisory_unlock')) {
-      const lockId = params[0];
+      const lockId = asNumber(params[0]);
       const success = this.db.advisoryUnlock(lockId);
       return [{ pg_advisory_unlock: success }] as T[];
     }
 
     // Table existence check
     if (normalizedSql.includes('information_schema.tables')) {
-      const tableName = params[0];
+      const tableName = asString(params[0]);
       const exists = this.db.tableExists(tableName);
       return [{ exists }] as T[];
     }
@@ -130,7 +144,7 @@ class TestPostgresDriver implements SqlDriver {
     // Insert with conflict handling
     if (normalizedSql.includes('insert')) {
       const tableName = 'migration_lock'; // Assuming this table
-      const lockId = params[0];
+      const lockId = asNumber(params[0]);
       const inserted = this.db.insertRow(tableName, lockId, { created_at: new Date() });
       
       if (inserted) {
@@ -142,7 +156,7 @@ class TestPostgresDriver implements SqlDriver {
     // Delete
     if (normalizedSql.includes('delete')) {
       const tableName = 'migration_lock';
-      const lockId = params[0];
+      const lockId = asNumber(params[0]);
       this.db.deleteRow(tableName, lockId);
       return [] as T[];
     }
@@ -534,7 +548,7 @@ describe('Integration Tests - PostgreSQL', () => {
       class RetryableDriver implements SqlDriver {
         constructor(private db: PostgresSimulator) {}
 
-        async query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+        async query<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
           const normalizedSql = sql.toLowerCase();
           
           if (normalizedSql.includes('insert')) {
@@ -542,7 +556,7 @@ describe('Integration Tests - PostgreSQL', () => {
             if (attemptCount < 3) {
               return [] as T[]; // Simulate conflict
             }
-            const lockId = params[0];
+            const lockId = asNumber(params[0]);
             this.db.insertRow('migration_lock', lockId, {});
             return [{ id: lockId }] as T[];
           }

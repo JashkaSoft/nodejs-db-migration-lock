@@ -8,10 +8,23 @@ const dbConfig = {
   database: process.env.POSTGRES_DB || 'migration_test',
 };
 
+interface MigrationLogRow {
+  status: string;
+  started_at: string | Date;
+  completed_at: string | Date;
+  process_id: string | number;
+  error_message: string | null;
+}
+
+interface UserRow {
+  email: string;
+  created_by: string;
+}
+
 describe('PostgreSQL Migration Lock E2E Tests', () => {
   let pool: Pool;
-  let logs: any[];
-  let users: any[];
+  let logs: MigrationLogRow[];
+  let users: UserRow[];
 
   beforeAll(async () => {
     pool = new Pool(dbConfig);
@@ -24,12 +37,12 @@ describe('PostgreSQL Migration Lock E2E Tests', () => {
     const logsResult = await pool.query(
       'SELECT * FROM migration_logs ORDER BY started_at',
     );
-    logs = logsResult.rows;
+    logs = logsResult.rows as MigrationLogRow[];
 
     const usersResult = await pool.query(
       'SELECT * FROM users ORDER BY created_at',
     );
-    users = usersResult.rows;
+    users = usersResult.rows as UserRow[];
   });
 
   afterAll(async () => {
@@ -148,10 +161,9 @@ describe('PostgreSQL Migration Lock E2E Tests', () => {
         
         // Lock should be released (no rows)
         expect(lockResult.rows).toHaveLength(0);
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Table might not exist if advisory lock was used
-        if (error.code === '42P01') {
-          // This is fine - advisory lock doesn't use a table
+        if (typeof error === 'object' && error !== null && 'code' in error && error.code === '42P01') {
           expect(error.code).toBe('42P01');
         } else {
           throw error;

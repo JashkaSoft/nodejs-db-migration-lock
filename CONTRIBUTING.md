@@ -110,7 +110,7 @@ import type { Pool } from 'mysql2/promise';
 export class MySQLDriver implements SqlDriver {
   constructor(private pool: Pool) {}
 
-  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     const [rows] = await this.pool.query(sql, params);
     return rows as T[];
   }

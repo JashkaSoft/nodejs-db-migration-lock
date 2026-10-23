@@ -2,6 +2,7 @@
  * Unit tests for PostgreSQL driver adapters
  */
 
+import type { Client, Pool } from 'pg';
 import { NodePgDriver } from '../../src/node-pg-driver';
 import { MockPgPool, MockPgClient } from './mocks';
 
@@ -16,7 +17,7 @@ describe('NodePgDriver', () => {
     describe('query', () => {
       it('should execute query', async () => {
         pool.mockResult('select * from users', [{ id: 1, name: 'Alice' }]);
-        const driver = new NodePgDriver(pool as any);
+        const driver = new NodePgDriver(pool as unknown as Pool);
 
         const result = await driver.query('SELECT * FROM users');
 
@@ -25,7 +26,7 @@ describe('NodePgDriver', () => {
       });
 
       it('should execute query with parameters', async () => {
-        const driver = new NodePgDriver(pool as any);
+        const driver = new NodePgDriver(pool as unknown as Pool);
 
         await driver.query('SELECT * FROM users WHERE id = $1', [1]);
 
@@ -37,7 +38,7 @@ describe('NodePgDriver', () => {
 
       it('should propagate query errors', async () => {
         pool.shouldFail = true;
-        const driver = new NodePgDriver(pool as any);
+        const driver = new NodePgDriver(pool as unknown as Pool);
 
         await expect(driver.query('SELECT 1')).rejects.toThrow('Pool query failed');
       });
@@ -45,7 +46,7 @@ describe('NodePgDriver', () => {
 
     describe('transaction', () => {
       it('should execute transaction with pool', async () => {
-        const driver = new NodePgDriver(pool as any);
+        const driver = new NodePgDriver(pool as unknown as Pool);
 
         const result = await driver.transaction(async () => {
           return 42;
@@ -59,7 +60,7 @@ describe('NodePgDriver', () => {
       });
 
       it('should handle transaction errors and rollback', async () => {
-        const driver = new NodePgDriver(pool as any);
+        const driver = new NodePgDriver(pool as unknown as Pool);
 
         await expect(
           driver.transaction(async () => {
@@ -71,7 +72,7 @@ describe('NodePgDriver', () => {
 
     describe('close', () => {
       it('should end pool', async () => {
-        const driver = new NodePgDriver(pool as any);
+        const driver = new NodePgDriver(pool as unknown as Pool);
         const endSpy = jest.spyOn(pool, 'end');
 
         await driver.close();
@@ -83,9 +84,9 @@ describe('NodePgDriver', () => {
     describe('session pinning', () => {
       it('should reuse one pool client for all queries', async () => {
         const sessionClient = {
-          queries: [] as Array<{ sql: string; params?: any[] }>,
+          queries: [] as Array<{ sql: string; params?: unknown[] }>,
           released: false,
-          async query(sql: string, params?: any[]) {
+          async query(sql: string, params?: unknown[]) {
             this.queries.push({ sql, params });
             return { rows: [{ ok: true }] };
           },
@@ -106,7 +107,7 @@ describe('NodePgDriver', () => {
           },
         };
 
-        const driver = new NodePgDriver(realShapedPool as any);
+        const driver = new NodePgDriver(realShapedPool as unknown as Pool);
         await driver.query('SELECT 1');
         await driver.query('SELECT 2');
 
@@ -126,7 +127,7 @@ describe('NodePgDriver', () => {
 
     describe('query', () => {
       it('should execute query', async () => {
-        const driver = new NodePgDriver(client as any);
+        const driver = new NodePgDriver(client as unknown as Client);
 
         await driver.query('SELECT 1');
 
@@ -137,7 +138,7 @@ describe('NodePgDriver', () => {
 
     describe('transaction', () => {
       it('should execute transaction with client', async () => {
-        const driver = new NodePgDriver(client as any);
+        const driver = new NodePgDriver(client as unknown as Client);
 
         const result = await driver.transaction(async () => {
           return 'done';
@@ -152,7 +153,7 @@ describe('NodePgDriver', () => {
       });
 
       it('should rollback on error', async () => {
-        const driver = new NodePgDriver(client as any);
+        const driver = new NodePgDriver(client as unknown as Client);
 
         await expect(
           driver.transaction(async () => {
@@ -168,7 +169,7 @@ describe('NodePgDriver', () => {
 
     describe('close', () => {
       it('should end client', async () => {
-        const driver = new NodePgDriver(client as any);
+        const driver = new NodePgDriver(client as unknown as Client);
         const endSpy = jest.spyOn(client, 'end');
 
         await driver.close();
