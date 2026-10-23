@@ -13,6 +13,7 @@ COPY packages/mysql/package.json packages/mysql/tsconfig.json ./packages/mysql/
 COPY packages/typeorm/package.json packages/typeorm/tsconfig.json ./packages/typeorm/
 COPY packages/sequelize/package.json packages/sequelize/tsconfig.json ./packages/sequelize/
 COPY packages/knex/package.json packages/knex/tsconfig.json ./packages/knex/
+COPY packages/sqlite/package.json packages/sqlite/tsconfig.json ./packages/sqlite/
 
 RUN npm install
 
@@ -22,6 +23,7 @@ COPY packages/mysql/src ./packages/mysql/src
 COPY packages/typeorm/src ./packages/typeorm/src
 COPY packages/sequelize/src ./packages/sequelize/src
 COPY packages/knex/src ./packages/knex/src
+COPY packages/sqlite/src ./packages/sqlite/src
 
 RUN npm run build
 
