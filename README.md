@@ -243,6 +243,11 @@ npm run test:e2e:typeorm:postgres
 npm run test:e2e:typeorm:mysql
 npm run test:e2e:sequelize:postgres
 npm run test:e2e:sequelize:mysql
+
+# Same mysql2 suite against the LTS servers people still run.
+# Pull requests stay on MySQL 9.7. These two run on main and weekly.
+MYSQL_IMAGE=docker.io/library/mysql:8.4 npm run test:e2e:mysql:mysql2
+MYSQL_IMAGE=docker.io/library/mariadb:11.8 npm run test:e2e:mysql:mysql2
 ```
 
 SQLite is still out of scope. Multi-replica apps live in [`examples/`](./examples) (NestJS/Express/Fastify + TypeORM, NestJS + Sequelize, NestJS + Knex) against Postgres and MySQL.
