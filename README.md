@@ -26,7 +26,7 @@ This is a monorepo containing multiple packages:
 |---------|-------------|---------|
 | [@nodejs-db-migration-lock/core](./packages/core) | Core interfaces and coordination logic | 0.1.0 |
 | [@nodejs-db-migration-lock/postgres](./packages/postgres) | PostgreSQL adapter with advisory and table locks | 0.1.0 |
-| `@nodejs-db-migration-lock/mysql` | MySQL/MariaDB adapter | Coming soon |
+| [@nodejs-db-migration-lock/mysql](./packages/mysql) | MySQL/MariaDB adapter (`GET_LOCK` + table lock) | 0.1.0 |
 | `@nodejs-db-migration-lock/sqlite` | SQLite adapter | Coming soon |
 
 ## 🚀 Quick Start
@@ -36,9 +36,11 @@ This is a monorepo containing multiple packages:
 ```bash
 # For PostgreSQL
 npm install @nodejs-db-migration-lock/core @nodejs-db-migration-lock/postgres
+npm install pg  # or typeorm
 
-# Also install your database client if not already installed
-npm install typeorm  # or pg, or any other client
+# For MySQL
+npm install @nodejs-db-migration-lock/core @nodejs-db-migration-lock/mysql
+npm install mysql2  # or typeorm mysql2
 ```
 
 ### Basic Usage with TypeORM
@@ -183,10 +185,17 @@ new PostgresAdvisoryLock({ lockId: 123456789 })
 new PostgresTableLock({ tableName: 'migration_lock' })
 ```
 
-### MySQL (Coming Soon)
+### MySQL
 
-- `MySQLAdvisoryLock` - Using GET_LOCK()
-- `MySQLTableLock` - Table-based locks
+**Advisory (`GET_LOCK`)** — session-scoped; pin one connection (`Mysql2Driver`).
+```typescript
+new MySQLAdvisoryLock({ lockName: 'migration_lock' })
+```
+
+**Table lock** (`INSERT IGNORE` into a one-row table)
+```typescript
+new MySQLTableLock({ tableName: 'migration_lock' })
+```
 
 ## 🛠️ Development
 
@@ -202,11 +211,14 @@ npm run build
 # Run unit tests
 npm test
 
-# Run PostgreSQL concurrent e2e tests (podman-compose or docker compose)
-npm run test:e2e:postgres
+# Concurrent e2e (podman-compose or docker compose), one suite per adapter
+npm run test:e2e:postgres:node-pg
+npm run test:e2e:postgres:typeorm
+npm run test:e2e:mysql:typeorm
+npm run test:e2e:mysql:mysql2
 ```
 
-MySQL and SQLite adapters are not in this repo yet. The shippable surface is `@nodejs-db-migration-lock/core` plus `@nodejs-db-migration-lock/postgres`.
+SQLite is still out of scope. Multi-replica TypeORM apps live in [`examples/`](./examples) (NestJS, Express, Fastify) against Postgres and MySQL.
 
 ## 🤝 Contributing
 
