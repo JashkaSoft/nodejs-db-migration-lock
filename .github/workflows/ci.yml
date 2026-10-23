@@ -27,25 +27,25 @@ jobs:
       - name: PostgreSQL node-pg e2e
         run: npm run test:e2e:postgres:node-pg
 
-  e2e-postgres-typeorm:
+  e2e-typeorm-postgres:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 26
-      - name: PostgreSQL TypeORM e2e
-        run: npm run test:e2e:postgres:typeorm
+      - name: TypeORM PostgreSQL e2e
+        run: npm run test:e2e:typeorm:postgres
 
-  e2e-mysql-typeorm:
+  e2e-typeorm-mysql:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 26
-      - name: MySQL TypeORM e2e
-        run: npm run test:e2e:mysql:typeorm
+      - name: TypeORM MySQL e2e
+        run: npm run test:e2e:typeorm:mysql
 
   e2e-mysql-mysql2:
     runs-on: ubuntu-latest

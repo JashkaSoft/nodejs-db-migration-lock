@@ -17,12 +17,12 @@ services:
       - migration-net
 
   migrator-1:
-    image: nodejs-db-migration-lock-e2e-mysql-typeorm:local
+    image: nodejs-db-migration-lock-e2e-typeorm-mysql:local
     build:
       context: ../../../../../
-      dockerfile: packages/mysql/tests/e2e/Dockerfile
+      dockerfile: packages/typeorm/tests/e2e/Dockerfile
       args:
-        E2E_SUITE: typeorm
+        E2E_SUITE: mysql
     environment:
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
@@ -38,12 +38,12 @@ services:
     command: ["node", "dist/migrate.js"]
 
   migrator-2:
-    image: nodejs-db-migration-lock-e2e-mysql-typeorm:local
+    image: nodejs-db-migration-lock-e2e-typeorm-mysql:local
     build:
       context: ../../../../../
-      dockerfile: packages/mysql/tests/e2e/Dockerfile
+      dockerfile: packages/typeorm/tests/e2e/Dockerfile
       args:
-        E2E_SUITE: typeorm
+        E2E_SUITE: mysql
     environment:
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
@@ -59,12 +59,12 @@ services:
     command: ["node", "dist/migrate.js"]
 
   migrator-3:
-    image: nodejs-db-migration-lock-e2e-mysql-typeorm:local
+    image: nodejs-db-migration-lock-e2e-typeorm-mysql:local
     build:
       context: ../../../../../
-      dockerfile: packages/mysql/tests/e2e/Dockerfile
+      dockerfile: packages/typeorm/tests/e2e/Dockerfile
       args:
-        E2E_SUITE: typeorm
+        E2E_SUITE: mysql
     environment:
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
@@ -80,12 +80,12 @@ services:
     command: ["node", "dist/migrate.js"]
 
   test-runner:
-    image: nodejs-db-migration-lock-e2e-mysql-typeorm:local
+    image: nodejs-db-migration-lock-e2e-typeorm-mysql:local
     build:
       context: ../../../../../
-      dockerfile: packages/mysql/tests/e2e/Dockerfile
+      dockerfile: packages/typeorm/tests/e2e/Dockerfile
       args:
-        E2E_SUITE: typeorm
+        E2E_SUITE: mysql
     environment:
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306

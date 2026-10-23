@@ -1,12 +1,12 @@
 {
-  "name": "e2e-postgres-typeorm",
-  "version": "1.0.0",
+  "name": "e2e-typeorm-mysql",
   "private": true,
+  "version": "1.0.0",
   "dependencies": {
     "@nodejs-db-migration-lock/core": "file:../../../../core",
-    "@nodejs-db-migration-lock/postgres": "file:../../../../postgres",
+    "@nodejs-db-migration-lock/mysql": "file:../../../../mysql",
     "@nodejs-db-migration-lock/typeorm": "file:../../../../typeorm",
-    "pg": "^8.23.1",
+    "mysql2": "^3.15.3",
     "reflect-metadata": "^0.2.2",
     "typeorm": "^0.3.27"
   },
