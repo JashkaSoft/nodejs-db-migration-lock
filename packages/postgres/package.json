@@ -15,10 +15,11 @@
     "test:unit": "jest --config tests/jest.config.unit.js",
     "test:watch": "jest --config tests/jest.config.unit.js --watch",
     "test:coverage": "jest --config tests/jest.config.unit.js --coverage",
-    "test:e2e": "./tests/e2e/run-test.sh",
-    "test:e2e:build": "podman-compose -f tests/e2e/docker-compose.yml build",
-    "test:e2e:up": "podman-compose -f tests/e2e/docker-compose.yml up",
-    "test:e2e:down": "podman-compose -f tests/e2e/docker-compose.yml down -v",
+    "test:e2e": "./tests/e2e/run-test.sh node-pg && ./tests/e2e/run-test.sh typeorm",
+    "test:e2e:node-pg": "./tests/e2e/run-test.sh node-pg",
+    "test:e2e:typeorm": "./tests/e2e/run-test.sh typeorm",
+    "test:e2e:build": "./tests/e2e/run-test.sh node-pg",
+    "test:e2e:down": "true",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

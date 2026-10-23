@@ -2,13 +2,11 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: docker.io/library/postgres:16-alpine
     environment:
       POSTGRES_USER: testuser
       POSTGRES_PASSWORD: testpass
       POSTGRES_DB: migration_test
-    ports:
-      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U testuser -d migration_test"]
       interval: 2s
@@ -18,10 +16,12 @@ services:
       - migration-net
 
   migrator-1:
-    image: nodejs-db-migration-lock-e2e:local
+    image: nodejs-db-migration-lock-e2e-pg-node-pg:local
     build:
-      context: ../../../../
+      context: ../../../../../
       dockerfile: packages/postgres/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: node-pg
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -38,10 +38,12 @@ services:
     command: ["node", "dist/migrate.js"]
 
   migrator-2:
-    image: nodejs-db-migration-lock-e2e:local
+    image: nodejs-db-migration-lock-e2e-pg-node-pg:local
     build:
-      context: ../../../../
+      context: ../../../../../
       dockerfile: packages/postgres/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: node-pg
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -58,10 +60,12 @@ services:
     command: ["node", "dist/migrate.js"]
 
   migrator-3:
-    image: nodejs-db-migration-lock-e2e:local
+    image: nodejs-db-migration-lock-e2e-pg-node-pg:local
     build:
-      context: ../../../../
+      context: ../../../../../
       dockerfile: packages/postgres/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: node-pg
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -78,10 +82,12 @@ services:
     command: ["node", "dist/migrate.js"]
 
   test-runner:
-    image: nodejs-db-migration-lock-e2e:local
+    image: nodejs-db-migration-lock-e2e-pg-node-pg:local
     build:
-      context: ../../../../
+      context: ../../../../../
       dockerfile: packages/postgres/tests/e2e/Dockerfile
+      args:
+        E2E_SUITE: node-pg
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432

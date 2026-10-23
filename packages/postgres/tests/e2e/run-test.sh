@@ -1,14 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SUITE="${1:-node-pg}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+SUITE_DIR="${SCRIPT_DIR}/${SUITE}"
+
+if [ ! -f "${SUITE_DIR}/docker-compose.yml" ]; then
+  echo "Unknown postgres e2e suite: ${SUITE}" >&2
+  echo "Expected ${SUITE_DIR}/docker-compose.yml" >&2
+  exit 1
+fi
+
+cd "$SUITE_DIR"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
-echo "Starting E2E tests for nodejs-db-migration-lock"
+echo "Starting PostgreSQL ${SUITE} e2e tests"
 echo "=================================================="
 
 if command -v podman-compose >/dev/null 2>&1 && podman info >/dev/null 2>&1; then
@@ -22,7 +31,7 @@ else
   exit 1
 fi
 
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-migration-lock-e2e}"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-migration-lock-pg-${SUITE}}"
 
 cleanup() {
   "${COMPOSE[@]}" down -v --timeout 5 >/dev/null 2>&1 || true
@@ -47,7 +56,6 @@ find_runner() {
       return 0
     fi
   done
-
   "$ENGINE" ps -a --format '{{.Names}}' | grep -E 'test-runner' | head -n1
 }
 
@@ -86,11 +94,11 @@ echo "=================================================="
 echo "test-runner exit code: ${exit_code}"
 
 if [ "$exit_code" = "0" ]; then
-  echo -e "${GREEN}E2E tests PASSED${NC}"
+  echo -e "${GREEN}PostgreSQL ${SUITE} e2e PASSED${NC}"
 else
   echo "Migrator logs:"
   "${COMPOSE[@]}" logs migrator-1 migrator-2 migrator-3 || true
-  echo -e "${RED}E2E tests FAILED (exit ${exit_code})${NC}"
+  echo -e "${RED}PostgreSQL ${SUITE} e2e FAILED (exit ${exit_code})${NC}"
 fi
 
 exit "$exit_code"
