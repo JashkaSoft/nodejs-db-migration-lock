@@ -3,7 +3,17 @@
  */
 
 // Export interfaces
-export { LockProvider, MigrationRunner, SqlDriver } from './interfaces';
+export { LockProvider, LockStatus, MigrationRunner, SqlDriver } from './interfaces';
+
+export { AcquireOptions, normalizeAcquireOptions } from './lock/acquire-options';
+export { lockHolder, quoteIdent } from './lock/holder';
+export {
+  MIGRATION_LOCK_SALT,
+  crc32,
+  postgresAdvisoryKey,
+  scopedLockName,
+} from './lock/lock-key';
+export { withProcessLock } from './lock/process-mutex';
 
 // Export coordinator
 export {
@@ -17,6 +27,7 @@ export {
   LockAcquisitionError,
   LockTimeoutError,
   MigrationExecutionError,
+  LockLeaseLostError,
 } from './errors';
 
 // Export retry utilities

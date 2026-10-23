@@ -39,3 +39,11 @@ export class MigrationExecutionError extends MigrationLockError {
   }
 }
 
+export class LockLeaseLostError extends MigrationLockError {
+  constructor() {
+    super('Lost migration lock lease while migrations were running');
+    this.name = 'LockLeaseLostError';
+    Object.setPrototypeOf(this, LockLeaseLostError.prototype);
+  }
+}
+

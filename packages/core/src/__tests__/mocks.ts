@@ -61,6 +61,10 @@ export class MockSqlDriver implements SqlDriver {
  */
 export class MockLockProvider implements LockProvider {
   name = 'mock-lock';
+  lockKey?: string;
+  waitsInDatabase?: boolean;
+  transactionScoped?: boolean;
+  renew?: (driver: SqlDriver) => Promise<boolean>;
   public acquireCalls = 0;
   public releaseCalls = 0;
   public infrastructureCalls = 0;
@@ -79,9 +83,16 @@ export class MockLockProvider implements LockProvider {
     }
   }
 
-  async acquire(driver: SqlDriver, signal?: AbortSignal): Promise<boolean> {
+  public lastAcquireOptions: unknown;
+
+  async acquire(driver: SqlDriver, options?: AbortSignal | { signal?: AbortSignal; timeoutMs?: number }): Promise<boolean> {
     this.acquireCalls++;
-    
+    this.lastAcquireOptions = options;
+    const signal =
+      options && typeof (options as AbortSignal).addEventListener === 'function'
+        ? (options as AbortSignal)
+        : (options as { signal?: AbortSignal } | undefined)?.signal;
+
     if (signal?.aborted) {
       return false;
     }
