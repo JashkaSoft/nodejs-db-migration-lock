@@ -11,11 +11,13 @@ npm install mysql2
 npm install @nodejs-db-migration-lock/typeorm typeorm mysql2
 # Sequelize
 npm install @nodejs-db-migration-lock/sequelize sequelize mysql2
+# Knex
+npm install @nodejs-db-migration-lock/knex knex mysql2
 ```
 
 ## Lock strategies
 
-**Advisory (`GET_LOCK`)** — session-level, no extra table. Use `Mysql2Driver` (or `@nodejs-db-migration-lock/typeorm` / `@nodejs-db-migration-lock/sequelize` with a pinned connection).
+**Advisory (`GET_LOCK`)** — session-level, no extra table. Use `Mysql2Driver` (or TypeORM/Sequelize/Knex adapters with a pinned connection).
 
 **Table lock** — `INSERT IGNORE` into a one-row lock table. Survives reconnects until released.
 
