@@ -215,7 +215,7 @@ new PostgresAdvisoryLock({ lockId: 123456789, scope: 'transaction' })
 new PostgresTableLock({ tableName: 'migration_lock', leaseMs: 30000 })
 ```
 
-The coordinator renews the lease while migrations run. `release()` deletes the row only when `holder` matches. `forceRelease()` clears it after a crash if you do not want to wait for `expires_at`. Creates (if missing) `migration_lock`. The DB user needs `CREATE` on the schema (or pre-create the table). An older `id`/`created_at` lock table gets the new columns on startup.
+The coordinator renews the lease on a second connection while migrations run, so a long statement on the lock session cannot starve the heartbeat. Only the process that holds the lock checks that connection out, and only until `migrate()` returns. Replicas still waiting keep the one session they pinned to try the lock. Advisory locks do not take this extra connection. `release()` deletes the row only when `holder` matches. `forceRelease()` clears it after a crash if you do not want to wait for `expires_at`. Creates (if missing) `migration_lock`. The DB user needs `CREATE` on the schema (or pre-create the table). An older `id`/`created_at` lock table gets the new columns on startup.
 
 ### MySQL
 
@@ -247,7 +247,7 @@ new MssqlAppLock({ lockName: 'migration_lock', scope: 'session' })
 
 `TediousDriver` keeps one connection. A session application lock ends when that connection closes. Pass `scope: 'transaction'` only when the migration runs inside that connection's transaction.
 
-ORM drivers (`TypeORMDriver`, `SequelizeDriver`, `KnexDriver`) check out one connection for lock SQL. Run the migration on the ORM's own pool. Two `migrate()` calls in one process that share a lock key wait for each other before they pin a second connection.
+ORM drivers (`TypeORMDriver`, `SequelizeDriver`, `KnexDriver`) check out one pool connection for lock SQL. A table lock checks out one more on the holder, for the heartbeat. Size that process's pool for those sessions plus the connections the migration itself opens. Each pool `max` is per process; the database still sees one session from every replica that is waiting, and one extra from the holder. Two `migrate()` calls in one process that share a lock key wait for each other before either checks out a connection.
 
 Advisory strategies need no extra DDL privileges. Table strategies only create the lock objects above — not your application schema. If the app user cannot create tables, create those objects in a migration/admin step and keep using the same `tableName`.
 
