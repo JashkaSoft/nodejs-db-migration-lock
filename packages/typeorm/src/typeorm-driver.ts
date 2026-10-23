@@ -1,20 +1,10 @@
 import { SqlDriver } from '@nodejs-db-migration-lock/core';
 
-// Use dynamic import type to avoid requiring typeorm at compile time
-type DataSource = any; // Users will import from 'typeorm' in their code
+type DataSource = any;
 
 /**
- * Adapter to use TypeORM DataSource as a SqlDriver
- * 
- * Usage:
- * ```typescript
- * import { DataSource } from 'typeorm';
- * import { TypeORMDriver } from '@nodejs-db-migration-lock/postgres';
- * 
- * const dataSource = new DataSource({...});
- * await dataSource.initialize();
- * const driver = new TypeORMDriver(dataSource);
- * ```
+ * Adapter for a TypeORM DataSource.
+ * Database-agnostic: pair with a lock provider from postgres, mysql, or another dialect package.
  */
 export class TypeORMDriver implements SqlDriver {
   constructor(private dataSource: DataSource) {
@@ -26,12 +16,18 @@ export class TypeORMDriver implements SqlDriver {
   }
 
   async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
-    return this.dataSource.query(sql, params);
+    const result = await this.dataSource.query(sql, params);
+    if (Array.isArray(result)) {
+      return result as T[];
+    }
+    if (result && typeof result === 'object') {
+      return [result as T];
+    }
+    return [];
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {
     return this.dataSource.transaction(async (manager: any) => {
-      // Temporarily swap the query runner
       const originalQuery = this.dataSource.query;
       this.dataSource.query = manager.query.bind(manager);
       try {
@@ -48,4 +44,3 @@ export class TypeORMDriver implements SqlDriver {
     }
   }
 }
-

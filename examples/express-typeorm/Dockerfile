@@ -8,6 +8,7 @@ COPY tsconfig.json ./
 COPY packages/core ./packages/core
 COPY packages/postgres ./packages/postgres
 COPY packages/mysql ./packages/mysql
+COPY packages/typeorm ./packages/typeorm
 
 RUN npm install && npm run build
 

@@ -5,7 +5,8 @@ import {
   MigrationRunner,
   LockTimeoutError,
 } from '@nodejs-db-migration-lock/core';
-import { TypeORMDriver, PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
+import { PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
+import { TypeORMDriver } from '@nodejs-db-migration-lock/typeorm';
 
 const PROCESS_ID = process.env.PROCESS_ID || 'unknown';
 

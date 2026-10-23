@@ -57,9 +57,6 @@
   "peerDependenciesMeta": {
     "pg": {
       "optional": true
-    },
-    "typeorm": {
-      "optional": true
     }
   }
 }

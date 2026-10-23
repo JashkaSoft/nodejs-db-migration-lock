@@ -1,13 +1,8 @@
 import { DataSource } from 'typeorm';
 import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
-import {
-  PostgresTableLock,
-  TypeORMDriver as PostgresTypeOrmDriver,
-} from '@nodejs-db-migration-lock/postgres';
-import {
-  MySQLTableLock,
-  TypeORMDriver as MysqlTypeOrmDriver,
-} from '@nodejs-db-migration-lock/mysql';
+import { PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
+import { MySQLTableLock } from '@nodejs-db-migration-lock/mysql';
+import { TypeORMDriver } from '@nodejs-db-migration-lock/typeorm';
 
 class TypeOrmRunner implements MigrationRunner {
   constructor(private readonly dataSource: DataSource) {}
@@ -19,14 +14,10 @@ class TypeOrmRunner implements MigrationRunner {
 export async function runLockedMigrations(dataSource: DataSource): Promise<void> {
   const replica = process.env.REPLICA_ID || 'unknown';
   const dbType = process.env.DB_TYPE || 'postgres';
-  const driver =
-    dbType === 'mysql'
-      ? new MysqlTypeOrmDriver(dataSource)
-      : new PostgresTypeOrmDriver(dataSource);
   const lockProvider = dbType === 'mysql' ? new MySQLTableLock() : new PostgresTableLock();
 
   const coordinator = new MigrationCoordinator({
-    driver,
+    driver: new TypeORMDriver(dataSource),
     lockProvider,
     migrationRunner: new TypeOrmRunner(dataSource),
     retryConfig: { maxRetries: 60, retryIntervalMs: 1000 },
