@@ -28,7 +28,8 @@ nodejs-db-migration-lock/
 │   ├── mysql/             # MySQL locks + Mysql2Driver
 │   ├── typeorm/           # TypeORM DataSource adapter (DB-agnostic)
 │   ├── sequelize/         # Sequelize adapter (DB-agnostic)
-│   └── knex/              # Knex adapter (DB-agnostic)
+│   ├── knex/              # Knex adapter (DB-agnostic)
+│   └── sqlite/            # SQLite table lock + NodeSqliteDriver
 │
 ├── examples/              # Usage examples
 └── README.md

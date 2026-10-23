@@ -143,8 +143,8 @@ try {
 For ready-to-use implementations, see:
 
 - [@nodejs-db-migration-lock/postgres](../postgres) - PostgreSQL support with advisory and table-based locks
-- `@nodejs-db-migration-lock/mysql` - MySQL support (coming soon)
-- `@nodejs-db-migration-lock/sqlite` - SQLite support (coming soon)
+- [@nodejs-db-migration-lock/mysql](../mysql) - MySQL/MariaDB `GET_LOCK` and table locks
+- [@nodejs-db-migration-lock/sqlite](../sqlite) - SQLite table lock and `node:sqlite` driver
 
 ## License
 

@@ -30,7 +30,7 @@ This is a monorepo containing multiple packages:
 | [@nodejs-db-migration-lock/typeorm](./packages/typeorm) | TypeORM `DataSource` driver (DB-agnostic) | 0.1.0 |
 | [@nodejs-db-migration-lock/sequelize](./packages/sequelize) | Sequelize driver (DB-agnostic) | 0.1.0 |
 | [@nodejs-db-migration-lock/knex](./packages/knex) | Knex driver (DB-agnostic) | 0.1.0 |
-| `@nodejs-db-migration-lock/sqlite` | SQLite adapter | Coming soon |
+| [@nodejs-db-migration-lock/sqlite](./packages/sqlite) | SQLite table lock + `node:sqlite` driver | 0.1.0 |
 
 ## 🚀 Quick Start
 
@@ -53,6 +53,9 @@ npm install @nodejs-db-migration-lock/sequelize sequelize
 
 # Knex (any supported database)
 npm install @nodejs-db-migration-lock/knex knex
+
+# SQLite (Node.js built-in node:sqlite)
+npm install @nodejs-db-migration-lock/sqlite
 ```
 
 ### Basic Usage with TypeORM
@@ -149,6 +152,7 @@ The `MigrationCoordinator` orchestrates these three pieces with retry logic, err
 - [TypeORM Package Documentation](./packages/typeorm/README.md)
 - [Sequelize Package Documentation](./packages/sequelize/README.md)
 - [Knex Package Documentation](./packages/knex/README.md)
+- [SQLite Package Documentation](./packages/sqlite/README.md)
 - [Examples](./examples)
 
 ## 🔍 Use Cases
@@ -243,6 +247,7 @@ npm run test:e2e:typeorm:postgres
 npm run test:e2e:typeorm:mysql
 npm run test:e2e:sequelize:postgres
 npm run test:e2e:sequelize:mysql
+npm run test:e2e:sqlite:node-sqlite
 
 # Same mysql2 suite against the LTS servers people still run.
 # Pull requests stay on MySQL 9.7. These two run on main and weekly.
@@ -250,7 +255,7 @@ MYSQL_IMAGE=docker.io/library/mysql:8.4 npm run test:e2e:mysql:mysql2
 MYSQL_IMAGE=docker.io/library/mariadb:11.8 npm run test:e2e:mysql:mysql2
 ```
 
-SQLite is still out of scope. Multi-replica apps live in [`examples/`](./examples) (NestJS/Express/Fastify + TypeORM, NestJS + Sequelize, NestJS + Knex) against Postgres and MySQL.
+Multi-replica apps live in [`examples/`](./examples) (NestJS/Express/Fastify + TypeORM, NestJS + Sequelize, NestJS + Knex, NestJS + SQLite) against Postgres, MySQL, and SQLite.
 
 ## 🤝 Contributing
 
