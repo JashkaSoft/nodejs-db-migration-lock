@@ -3,6 +3,9 @@ set -euo pipefail
 
 SUITE="${1:-oracledb}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
+# shellcheck disable=SC1091
+source "${REPO_ROOT}/scripts/e2e-matrix.sh"
 SUITE_DIR="${SCRIPT_DIR}/${SUITE}"
 
 if [ ! -f "${SUITE_DIR}/docker-compose.yml" ]; then
@@ -31,18 +34,20 @@ else
   exit 1
 fi
 
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-migration-lock-oracle-${SUITE}}"
+e2e_matrix_begin
+
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(e2e_matrix_project_name "migration-lock-oracle-${SUITE}")}"
 
 cleanup() {
-  "${COMPOSE[@]}" down -v --timeout 5 >/dev/null 2>&1 || true
+  "${COMPOSE[@]}" "${COMPOSE_FILES[@]}" down -v --timeout 5 >/dev/null 2>&1 || true
 }
-trap cleanup EXIT
+trap 'cleanup; e2e_matrix_remove_override' EXIT
 
 echo "Cleaning up previous runs..."
 cleanup
 
 echo "Building and starting containers..."
-"${COMPOSE[@]}" up -d --build oracle migrator-1 migrator-2 migrator-3 test-runner
+"${COMPOSE[@]}" "${COMPOSE_FILES[@]}" up -d --build oracle migrator-1 migrator-2 migrator-3 test-runner
 
 find_runner() {
   local candidates=(
@@ -71,7 +76,7 @@ done
 if [ -z "$container_name" ]; then
   echo -e "${RED}test-runner container did not start${NC}" >&2
   "$ENGINE" ps -a || true
-  "${COMPOSE[@]}" logs || true
+  "${COMPOSE[@]}" "${COMPOSE_FILES[@]}" logs || true
   exit 1
 fi
 
@@ -83,13 +88,13 @@ set -e
 
 if [ "$wait_status" -ne 0 ] || [ -z "$exit_code" ]; then
   echo -e "${RED}Failed to wait for test-runner${NC}" >&2
-  "${COMPOSE[@]}" logs test-runner || true
+  "${COMPOSE[@]}" "${COMPOSE_FILES[@]}" logs test-runner || true
   exit 1
 fi
 
 echo "=================================================="
 echo "Verifier logs:"
-"${COMPOSE[@]}" logs test-runner || true
+"${COMPOSE[@]}" "${COMPOSE_FILES[@]}" logs test-runner || true
 echo "=================================================="
 echo "test-runner exit code: ${exit_code}"
 
@@ -97,7 +102,7 @@ if [ "$exit_code" = "0" ]; then
   echo -e "${GREEN}Oracle ${SUITE} e2e PASSED${NC}"
 else
   echo "Migrator logs:"
-  "${COMPOSE[@]}" logs migrator-1 migrator-2 migrator-3 || true
+  "${COMPOSE[@]}" "${COMPOSE_FILES[@]}" logs migrator-1 migrator-2 migrator-3 || true
   echo -e "${RED}Oracle ${SUITE} e2e FAILED (exit ${exit_code})${NC}"
 fi
 
