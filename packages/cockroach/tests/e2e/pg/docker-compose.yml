@@ -1,0 +1,61 @@
+version: '3.8'
+
+x-migrator: &migrator
+  image: nodejs-db-migration-lock-e2e-cockroach-pg:local
+  build:
+    context: ../../../../../
+    dockerfile: packages/cockroach/tests/e2e/Dockerfile
+    args:
+      E2E_SUITE: pg
+  environment: &db
+    PGHOST: cockroach
+    PGPORT: "26257"
+    PGUSER: root
+    PGDATABASE: defaultdb
+    PROCESS_ID: "1"
+  depends_on:
+    cockroach:
+      condition: service_healthy
+  networks:
+    - migration-net
+  command: ["node", "dist/migrate.js"]
+
+services:
+  cockroach:
+    image: docker.io/cockroachdb/cockroach:v25.4.18
+    entrypoint: ["/cockroach/cockroach"]
+    command: ["start-single-node", "--insecure", "--listen-addr=0.0.0.0:26257", "--advertise-addr=cockroach:26257"]
+    healthcheck:
+      test: ["CMD", "/cockroach/cockroach", "sql", "--insecure", "--host=localhost:26257", "-e", "SELECT 1"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
+    networks:
+      - migration-net
+
+  migrator-1:
+    <<: *migrator
+
+  migrator-2:
+    <<: *migrator
+    environment:
+      <<: *db
+      PROCESS_ID: "2"
+
+  migrator-3:
+    <<: *migrator
+    environment:
+      <<: *db
+      PROCESS_ID: "3"
+
+  test-runner:
+    <<: *migrator
+    environment:
+      <<: *db
+      EXPECTED_PROCESSES: "3"
+    command: ["node", "dist/verify.js"]
+
+networks:
+  migration-net:
+    driver: bridge
