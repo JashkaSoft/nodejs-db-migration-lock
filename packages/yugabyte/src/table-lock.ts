@@ -25,6 +25,16 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function runDdl(operation: () => Promise<unknown>): Promise<void> {
+  try {
+    await withTransientRetry(operation);
+  } catch (error) {
+    if (!isDuplicateRelationError(error)) {
+      throw error;
+    }
+  }
+}
+
 async function withTransientRetry<T>(
   operation: () => Promise<T>,
   maxAttempts = 12,
@@ -113,7 +123,7 @@ export class YugabyteTableLock implements LockProvider {
       await sleep(50 * (attempt + 1));
     }
 
-    await withTransientRetry(() =>
+    await runDdl(() =>
       driver.query(`
       CREATE TABLE IF NOT EXISTS ${table} (
         id BIGINT PRIMARY KEY,
@@ -124,13 +134,11 @@ export class YugabyteTableLock implements LockProvider {
     `),
     );
 
-    await withTransientRetry(() =>
-      driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS holder TEXT`),
-    );
-    await withTransientRetry(() =>
+    await runDdl(() => driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS holder TEXT`));
+    await runDdl(() =>
       driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS locked_at BIGINT`),
     );
-    await withTransientRetry(() =>
+    await runDdl(() =>
       driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS expires_at BIGINT`),
     );
   }

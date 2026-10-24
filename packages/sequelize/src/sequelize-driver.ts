@@ -50,6 +50,16 @@ function normalizeSequelizeQueryResult<T>(raw: unknown): T[] {
     if (typeof right === 'number') {
       return [{ affectedRows: right } as T];
     }
+    if (
+      Array.isArray(left) &&
+      left.length === 0 &&
+      right &&
+      typeof right === 'object' &&
+      !Array.isArray(right) &&
+      !isOkPacket(right)
+    ) {
+      return [] as T[];
+    }
     if (right && typeof right === 'object' && !Array.isArray(right)) {
       return [right as T];
     }
