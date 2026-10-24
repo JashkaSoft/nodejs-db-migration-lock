@@ -59,7 +59,8 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  # E2e rows: .github/e2e-targets.json + paths-filter + build-e2e-matrix.js
+  # E2e rows from paths-filter + build-e2e-matrix.js. Full matrix only when global/core
+  # (root package.json, lockfile, examples, packages/core) changes — not for .github/ CI edits alone.
   e2e:
     needs: changes
     if: needs.changes.outputs.run_e2e == 'true'

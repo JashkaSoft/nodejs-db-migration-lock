@@ -14,14 +14,12 @@ docs:
   - '.github/pull_request_template.md'
   - '.cursor/**'
   - '.vscode/**'
+# Root / shared infra: run the full e2e matrix (not .github CI scripts — those use package filters).
 global:
   - 'package.json'
   - 'package-lock.json'
   - 'lerna.json'
   - 'tsconfig.json'
-  - '.github/workflows/**'
-  - '.github/e2e-targets.json'
-  - '.github/scripts/**'
   - 'examples/**'
 core:
   - 'packages/core/**'
