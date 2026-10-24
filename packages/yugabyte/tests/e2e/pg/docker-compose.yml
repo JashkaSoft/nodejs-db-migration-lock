@@ -1,0 +1,69 @@
+version: '3.8'
+
+x-migrator: &migrator
+  image: nodejs-db-migration-lock-e2e-yugabyte-pg:local
+  build:
+    context: ../../../../../
+    dockerfile: packages/yugabyte/tests/e2e/Dockerfile
+    args:
+      E2E_SUITE: pg
+  environment: &db
+    PGHOST: yugabyte
+    PGPORT: 5433
+    PGUSER: yugabyte
+    PGPASSWORD: yugabyte
+    PGDATABASE: yugabyte
+    PROCESS_ID: "1"
+  depends_on:
+    yugabyte:
+      condition: service_healthy
+  networks:
+    - migration-net
+  command: ["node", "dist/migrate.js"]
+
+services:
+  yugabyte:
+    image: docker.io/yugabytedb/yugabyte:2026.1.2.0-b137
+    # Catalog writes are checked on the master. The default floor is the larger
+    # of ~3 GiB and 5% of the data volume, so a nearly full host disk rejects
+    # every tablet write. Lower that floor for this single-node e2e.
+    command:
+      - bin/yugabyted
+      - start
+      - --background=false
+      - --master_flags=reject_writes_min_disk_space_pct=0,reject_writes_min_disk_space_mb=256
+      - --tserver_flags=reject_writes_min_disk_space_pct=0,reject_writes_min_disk_space_mb=256
+    healthcheck:
+      test: ["CMD", "bin/ysqlsh", "-h", "yugabyte", "-U", "yugabyte", "-d", "yugabyte", "-c", "SELECT 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 40
+      start_period: 90s
+    networks:
+      - migration-net
+
+  migrator-1:
+    <<: *migrator
+
+  migrator-2:
+    <<: *migrator
+    environment:
+      <<: *db
+      PROCESS_ID: "2"
+
+  migrator-3:
+    <<: *migrator
+    environment:
+      <<: *db
+      PROCESS_ID: "3"
+
+  test-runner:
+    <<: *migrator
+    environment:
+      <<: *db
+      EXPECTED_PROCESSES: "3"
+    command: ["node", "dist/verify.js"]
+
+networks:
+  migration-net:
+    driver: bridge
