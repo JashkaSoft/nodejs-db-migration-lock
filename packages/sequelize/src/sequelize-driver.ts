@@ -6,6 +6,42 @@ type ConnectionManager = {
   releaseConnection(connection: unknown): Promise<void>;
 };
 
+function isOkPacket(value: unknown): value is { affectedRows?: number; insertId?: number } {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    ('affectedRows' in value || 'insertId' in value || 'fieldCount' in value)
+  );
+}
+
+function normalizeSequelizeQueryResult<T>(results: unknown, metadata: unknown): T[] {
+  if (Array.isArray(results) && results.length > 0) {
+    const first = results[0];
+    if (first !== undefined && first !== null && typeof first === 'object' && !isOkPacket(first)) {
+      return results as T[];
+    }
+    if (isOkPacket(first)) {
+      return [first as T];
+    }
+  }
+  if (typeof metadata === 'number') {
+    return [{ affectedRows: metadata } as T];
+  }
+  if (metadata && typeof metadata === 'object') {
+    return [metadata as T];
+  }
+  if (isOkPacket(results)) {
+    return [results as T];
+  }
+  if (Array.isArray(results)) {
+    return results as T[];
+  }
+  if (results && typeof results === 'object') {
+    return [results as T];
+  }
+  return [];
+}
+
 /**
  * Adapter for a Sequelize instance.
  * When connectionManager is present, one connection is checked out and every
@@ -59,19 +95,7 @@ export class SequelizeDriver implements SqlDriver {
     }
 
     const [results, metadata] = await this.sequelize.query(sql, options);
-    if (Array.isArray(results) && results.length > 0) {
-      return results as T[];
-    }
-    if (metadata && typeof metadata === 'object') {
-      return [metadata as T];
-    }
-    if (Array.isArray(results)) {
-      return results as T[];
-    }
-    if (results && typeof results === 'object') {
-      return [results as T];
-    }
-    return [];
+    return normalizeSequelizeQueryResult<T>(results, metadata);
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {

@@ -94,6 +94,24 @@ describe('SequelizeDriver', () => {
     ]);
   });
 
+  it('wraps numeric mysql metadata as affectedRows', async () => {
+    sequelize.dialect = 'mysql';
+    sequelize.nextResult = [[], 1];
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await expect(driver.query('INSERT INTO t (id) VALUES (1)')).resolves.toEqual([
+      { affectedRows: 1 },
+    ]);
+  });
+
+  it('returns ok packet rows from mysql insert results', async () => {
+    sequelize.dialect = 'mysql';
+    sequelize.nextResult = [[{ affectedRows: 2, insertId: 0, fieldCount: 0 }], undefined];
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await expect(driver.query('UPDATE t SET id = 1')).resolves.toEqual([
+      { affectedRows: 2, insertId: 0, fieldCount: 0 },
+    ]);
+  });
+
   it('propagates query errors', async () => {
     sequelize.shouldFail = true;
     const driver = new SequelizeDriver(sequelize as unknown as Sequelize);

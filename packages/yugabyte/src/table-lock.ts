@@ -20,9 +20,21 @@ const DEFAULT_OPTIONS = {
   leaseMs: 30_000,
 };
 
+function isDuplicateRelationError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const code = (error as { code?: string }).code;
+  if (code === '42P07' || code === '42710') {
+    return true;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return /already exists/i.test(message);
+}
+
 /**
  * One-row lease. Session advisory locks are not used on YugabyteDB.
- * CREATE TABLE IF NOT EXISTS is idempotent without a separate DDL lock.
+ * Concurrent migrators check information_schema before CREATE and tolerate duplicate DDL races.
  */
 export class YugabyteTableLock implements LockProvider {
   name = 'yugabyte-table-lock';
@@ -42,14 +54,32 @@ export class YugabyteTableLock implements LockProvider {
 
   async ensureInfrastructure(driver: SqlDriver): Promise<void> {
     const table = quoteIdent(this.tableName, '"');
-    await driver.query(`
-      CREATE TABLE IF NOT EXISTS ${table} (
-        id BIGINT PRIMARY KEY,
-        holder TEXT NOT NULL,
-        locked_at BIGINT NOT NULL,
-        expires_at BIGINT NOT NULL
-      )
-    `);
+    const existing = await driver.query<{ exists: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM information_schema.tables
+         WHERE table_schema = current_schema() AND table_name = $1
+       ) AS exists`,
+      [this.tableName],
+    );
+
+    if (!existing[0]?.exists) {
+      try {
+        await driver.query(`
+          CREATE TABLE ${table} (
+            id BIGINT PRIMARY KEY,
+            holder TEXT NOT NULL,
+            locked_at BIGINT NOT NULL,
+            expires_at BIGINT NOT NULL
+          )
+        `);
+      } catch (error) {
+        if (!isDuplicateRelationError(error)) {
+          throw error;
+        }
+      }
+      return;
+    }
+
     await driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS holder TEXT`);
     await driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS locked_at BIGINT`);
     await driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS expires_at BIGINT`);
