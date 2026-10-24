@@ -1,0 +1,44 @@
+{
+  "name": "@nodejs-db-migration-lock/yugabyte",
+  "version": "0.1.0",
+  "description": "YugabyteDB lease lock. Session advisory locks are not used.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "jest --config tests/jest.config.unit.js",
+    "test:unit": "jest --config tests/jest.config.unit.js",
+    "test:e2e": "./tests/e2e/run-test.sh pg",
+    "test:e2e:pg": "./tests/e2e/run-test.sh pg",
+    "prepublishOnly": "npm run build"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/nodejs-db-migration-lock.git",
+    "directory": "packages/yugabyte"
+  },
+  "publishConfig": { "access": "public" },
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.15.5",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "jest": "30.5.2",
+    "pg": "^8.16.3",
+    "ts-jest": "29.4.15",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
+  },
+  "peerDependencies": {
+    "pg": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "pg": { "optional": true }
+  },
+  "engines": { "node": ">=24.15.0" }
+}
