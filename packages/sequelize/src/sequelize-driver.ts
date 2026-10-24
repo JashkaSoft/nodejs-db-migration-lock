@@ -14,31 +14,52 @@ function isOkPacket(value: unknown): value is { affectedRows?: number; insertId?
   );
 }
 
-function normalizeSequelizeQueryResult<T>(results: unknown, metadata: unknown): T[] {
-  if (Array.isArray(results) && results.length > 0) {
-    const first = results[0];
+function normalizeSequelizeQueryResult<T>(raw: unknown): T[] {
+  if (!Array.isArray(raw)) {
+    if (isOkPacket(raw)) {
+      return [raw as T];
+    }
+    if (raw && typeof raw === 'object') {
+      return [raw as T];
+    }
+    return [];
+  }
+
+  if (raw.length === 2) {
+    const [left, right] = raw;
+    if (isOkPacket(right)) {
+      return [right as T];
+    }
+    if (right && typeof right === 'object' && !Array.isArray(right)) {
+      return [right as T];
+    }
+    if (typeof right === 'number' && (typeof left === 'number' || left === null || left === undefined)) {
+      return [{ affectedRows: right } as T];
+    }
+    if (Array.isArray(left) && (left.length > 0 || left === right)) {
+      return left as T[];
+    }
+    if (isOkPacket(left)) {
+      return [left as T];
+    }
+    if (typeof right === 'number') {
+      return [{ affectedRows: right } as T];
+    }
+  }
+
+  if (raw.length > 0) {
+    const first = raw[0];
+    if (Array.isArray(first)) {
+      return first as T[];
+    }
     if (first !== undefined && first !== null && typeof first === 'object' && !isOkPacket(first)) {
-      return results as T[];
+      return raw as T[];
     }
     if (isOkPacket(first)) {
       return [first as T];
     }
   }
-  if (typeof metadata === 'number') {
-    return [{ affectedRows: metadata } as T];
-  }
-  if (metadata && typeof metadata === 'object') {
-    return [metadata as T];
-  }
-  if (isOkPacket(results)) {
-    return [results as T];
-  }
-  if (Array.isArray(results)) {
-    return results as T[];
-  }
-  if (results && typeof results === 'object') {
-    return [results as T];
-  }
+
   return [];
 }
 
@@ -94,8 +115,8 @@ export class SequelizeDriver implements SqlDriver {
       }
     }
 
-    const [results, metadata] = await this.sequelize.query(sql, options);
-    return normalizeSequelizeQueryResult<T>(results, metadata);
+    const raw = await this.sequelize.query(sql, options);
+    return normalizeSequelizeQueryResult<T>(raw);
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {

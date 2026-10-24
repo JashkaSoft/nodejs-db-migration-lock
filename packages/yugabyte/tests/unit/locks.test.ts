@@ -15,8 +15,15 @@ class MockDriver implements SqlDriver {
     if (/information_schema\.tables/i.test(sql)) {
       return [{ exists: this.tableExists }] as T[];
     }
-    if (/^create table/i.test(sql.trim()) && this.createTableError) {
+    if (
+      /^create table/i.test(sql.trim()) &&
+      !/if not exists/i.test(sql) &&
+      this.createTableError
+    ) {
       throw this.createTableError;
+    }
+    if (/^create table/i.test(sql.trim())) {
+      this.tableExists = true;
     }
     if (/^insert|^update|^select id/i.test(sql.trim())) {
       return this.rows as T[];
@@ -32,7 +39,7 @@ describe('YugabyteTableLock', () => {
     const sql = driver.queries.map((query) => query.sql).join('\n');
     expect(sql).toContain('information_schema.tables');
     expect(sql).toContain('CREATE TABLE "migration_lock"');
-    expect(sql).not.toContain('IF NOT EXISTS');
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "migration_lock"');
     expect(sql).not.toContain('pg_advisory_lock');
   });
 
@@ -42,6 +49,7 @@ describe('YugabyteTableLock', () => {
       code: '42710',
     });
     await expect(new YugabyteTableLock().ensureInfrastructure(driver)).resolves.toBeUndefined();
+    expect(driver.queries.some((q) => q.sql.includes('CREATE TABLE IF NOT EXISTS'))).toBe(true);
   });
 
   it('upgrades an existing table with missing lease columns', async () => {

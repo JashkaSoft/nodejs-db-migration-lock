@@ -112,6 +112,24 @@ describe('SequelizeDriver', () => {
     ]);
   });
 
+  it('returns empty rows for mysql select with no matches', async () => {
+    sequelize.dialect = 'mysql';
+    sequelize.nextResult = [[], []];
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await expect(driver.query('SELECT holder FROM migration_lock WHERE id = ?', [1])).resolves.toEqual(
+      [],
+    );
+  });
+
+  it('maps sequelize insert tuple to affectedRows', async () => {
+    sequelize.dialect = 'mysql';
+    sequelize.nextResult = [0, 1];
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await expect(driver.query('INSERT INTO migration_lock (id) VALUES (1)')).resolves.toEqual([
+      { affectedRows: 1 },
+    ]);
+  });
+
   it('propagates query errors', async () => {
     sequelize.shouldFail = true;
     const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
