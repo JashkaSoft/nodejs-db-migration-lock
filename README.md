@@ -32,6 +32,11 @@ This is a monorepo containing multiple packages:
 | [@nodejs-db-migration-lock/knex](./packages/knex) | Knex driver (DB-agnostic) | 0.1.0 |
 | [@nodejs-db-migration-lock/sqlite](./packages/sqlite) | SQLite table lock + `node:sqlite` driver | 0.1.0 |
 | [@nodejs-db-migration-lock/mssql](./packages/mssql) | SQL Server `sp_getapplock` + tedious driver | 0.1.0 |
+| [@nodejs-db-migration-lock/oracle](./packages/oracle) | Oracle `DBMS_LOCK` + oracledb driver | 0.1.0 |
+| [@nodejs-db-migration-lock/cockroach](./packages/cockroach) | CockroachDB leased table lock + pg driver | 0.1.0 |
+| [@nodejs-db-migration-lock/yugabyte](./packages/yugabyte) | YugabyteDB leased table lock + pg driver | 0.1.0 |
+| [@nodejs-db-migration-lock/mikroorm](./packages/mikroorm) | MikroORM driver (DB-agnostic) | 0.1.0 |
+| [@nodejs-db-migration-lock/kysely](./packages/kysely) | Kysely driver (DB-agnostic) | 0.1.0 |
 
 ## 🚀 Quick Start
 
@@ -158,6 +163,12 @@ The `MigrationCoordinator` orchestrates these three pieces with retry logic, err
 - [Sequelize Package Documentation](./packages/sequelize/README.md)
 - [Knex Package Documentation](./packages/knex/README.md)
 - [SQLite Package Documentation](./packages/sqlite/README.md)
+- [SQL Server Package Documentation](./packages/mssql/README.md)
+- [Oracle Package Documentation](./packages/oracle/README.md)
+- [CockroachDB Package Documentation](./packages/cockroach/README.md)
+- [YugabyteDB Package Documentation](./packages/yugabyte/README.md)
+- [MikroORM Package Documentation](./packages/mikroorm/README.md)
+- [Kysely Package Documentation](./packages/kysely/README.md)
 - [Examples](./examples)
 
 ## 🔍 Use Cases
@@ -247,7 +258,7 @@ new MssqlAppLock({ lockName: 'migration_lock', scope: 'session' })
 
 `TediousDriver` keeps one connection. A session application lock ends when that connection closes. Pass `scope: 'transaction'` only when the migration runs inside that connection's transaction.
 
-ORM drivers (`TypeORMDriver`, `SequelizeDriver`, `KnexDriver`) check out one pool connection for lock SQL. A table lock checks out one more on the holder, for the heartbeat. Size that process's pool for those sessions plus the connections the migration itself opens. Each pool `max` is per process; the database still sees one session from every replica that is waiting, and one extra from the holder. Two `migrate()` calls in one process that share a lock key wait for each other before either checks out a connection.
+ORM drivers (`TypeORMDriver`, `SequelizeDriver`, `KnexDriver`, `MikroORMDriver`, `KyselyDriver`) check out one pool connection for lock SQL. A table lock checks out one more on the holder, for the heartbeat. Size that process's pool for those sessions plus the connections the migration itself opens. Each pool `max` is per process; the database still sees one session from every replica that is waiting, and one extra from the holder. Two `migrate()` calls in one process that share a lock key wait for each other before either checks out a connection.
 
 Advisory strategies need no extra DDL privileges. Table strategies only create the lock objects above — not your application schema. If the app user cannot create tables, create those objects in a migration/admin step and keep using the same `tableName`.
 
@@ -278,7 +289,7 @@ const coordinator = new MigrationCoordinator({
 });
 ```
 
-The coordinator does not retry a dropped connection. A failed query throws `LockAcquisitionError` or `MigrationExecutionError`.
+While acquiring a lock, the coordinator retries transient connection failures and deadlocks (`ECONNRESET`, Postgres `57P01` / `40P01` / `40001`, MySQL deadlock 1213, and the same class of errors from other drivers). A database-wait lock that returns false has already waited inside the server, so that result is not retried. A non-transient query error throws `LockAcquisitionError` or `MigrationExecutionError`.
 
 ## Releasing a stuck lock
 
@@ -289,7 +300,10 @@ The coordinator does not retry a dropped connection. A failed query throws `Lock
 | `PostgresAdvisoryLock` | The database drops it when the connection closes. A hung process that still owns the session keeps it. | There is no `forceRelease`. Disconnect the holder, or `SELECT pg_terminate_backend(pid)` for the backend in `pg_locks` where `locktype = 'advisory'`. `release(driver)` runs `pg_advisory_unlock` on that same session. `scope: 'transaction'` ends at `COMMIT` or `ROLLBACK`. |
 | `MySQLAdvisoryLock` | `GET_LOCK` ends when that session disconnects. | There is no `forceRelease`. `release(driver)` runs `RELEASE_LOCK` on that session. Otherwise kill the connection that holds the name. |
 | `MssqlAppLock` | `sp_getapplock` ends when that session disconnects. | There is no `forceRelease`. `release(driver)` runs `sp_releaseapplock` on that session. `scope: 'transaction'` ends at `COMMIT` or `ROLLBACK`. Otherwise kill the SQL Server session. |
-| `PostgresTableLock`, `MySQLTableLock`, `SqliteTableLock` | The next replica takes the row after `expires_at` (default 30 seconds). | `status(driver)` shows `holder`, `lockedAt`, and `expiresAt`. `forceRelease(driver)` deletes the row. `release(driver)` deletes it only when this process is the holder. |
+| `PostgresTableLock`, `MySQLTableLock`, `SqliteTableLock`, `CockroachTableLock`, `YugabyteTableLock` | The next replica takes the row after `expires_at` (default 30 seconds). | `status(driver)` shows `holder`, `lockedAt`, and `expiresAt`. `forceRelease(driver)` deletes the row. `release(driver)` deletes it only when this process is the holder. |
+| `OracleAppLock` | `DBMS_LOCK` ends when that session disconnects. | There is no `forceRelease`. `release(driver)` runs `DBMS_LOCK.RELEASE` on that session. Otherwise kill the session that holds the `UL` lock. `scope: 'transaction'` ends at `COMMIT` or `ROLLBACK`. |
+
+PgBouncer in transaction mode returns the server connection after each transaction, so a Postgres session advisory lock does not stay held. Use `PostgresTableLock` in that mode. Session pooling keeps the backend and is compatible with `PostgresAdvisoryLock`. CockroachDB and YugabyteDB do not offer `pg_advisory_lock`; their packages use the table lease only.
 
 ```typescript
 const lock = new PostgresTableLock(); // or MySQLTableLock / SqliteTableLock
@@ -322,6 +336,11 @@ npm run test:e2e:sequelize:postgres
 npm run test:e2e:sequelize:mysql
 npm run test:e2e:sqlite:node-sqlite
 npm run test:e2e:mssql:tedious
+npm run test:e2e:oracle:oracledb
+npm run test:e2e:cockroach:pg
+npm run test:e2e:yugabyte:pg
+npm run test:e2e:mikroorm:postgres
+npm run test:e2e:kysely:postgres
 
 # Same mysql2 suite against the LTS servers people still run.
 # Pull requests stay on MySQL 9.7. These two run on main and weekly.

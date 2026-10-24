@@ -163,6 +163,31 @@ const driver = new MyCustomDriver(myClient);
 - `MssqlAppLock` - `sp_getapplock` / `sp_releaseapplock` (session by default, transaction opt-in)
 - `TediousDriver` - one tedious connection for the life of the lock
 
+### @nodejs-db-migration-lock/oracle
+**Oracle `DBMS_LOCK`**
+- `OracleAppLock` - exclusive `DBMS_LOCK.REQUEST` / `RELEASE` (session by default, transaction opt-in)
+- `OracleDriver` - one oracledb session for the life of the lock
+
+### @nodejs-db-migration-lock/cockroach
+**CockroachDB table lease**
+- `CockroachTableLock` - one-row lease. CockroachDB has no `pg_advisory_lock`.
+- `CockroachDriver` - pins one `pg` client and forks a second for the heartbeat
+
+### @nodejs-db-migration-lock/yugabyte
+**YugabyteDB table lease**
+- `YugabyteTableLock` - one-row lease. Session advisory locks are not used.
+- `YugabyteDriver` - pins one `pg` client and forks a second for the heartbeat
+
+### @nodejs-db-migration-lock/mikroorm
+**ORM adapter (database-agnostic)**
+- `MikroORMDriver` - checks out one native pool client for lock SQL
+- Pair with a dialect lock package
+
+### @nodejs-db-migration-lock/kysely
+**Query-builder adapter (database-agnostic)**
+- `KyselyDriver` - holds one pooled connection for lock SQL
+- Pair with a dialect lock package
+
 ### Other packages
 - `@nodejs-db-migration-lock/mysql` - MySQL/MariaDB `GET_LOCK` and a leased table lock + `Mysql2Driver`
 

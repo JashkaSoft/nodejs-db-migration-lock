@@ -34,3 +34,13 @@ On first use the table lock creates `migration_lock` (or `tableName`) with `hold
 ```bash
 npm run test:e2e:sqlite:node-sqlite
 ```
+
+## Release the lock by hand
+
+`forceRelease(driver)` deletes the lease row:
+
+```sql
+DELETE FROM migration_lock WHERE id = 1;
+```
+
+`release(driver)` also matches `holder`. The next waiter takes the row after `expires_at`. There is no advisory lock to unlock.
