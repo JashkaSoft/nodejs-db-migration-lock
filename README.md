@@ -348,7 +348,7 @@ MYSQL_IMAGE=docker.io/library/mysql:8.4 npm run test:e2e:mysql:mysql2
 MYSQL_IMAGE=docker.io/library/mariadb:11.8 npm run test:e2e:mysql:mysql2
 ```
 
-Multi-replica apps live in [`examples/`](./examples) (NestJS/Express/Fastify + TypeORM, NestJS + Sequelize, NestJS + Knex, NestJS + SQLite, NestJS and Express + SQL Server) against Postgres, MySQL, SQLite, and SQL Server.
+Multi-replica apps live in [`examples/`](./examples) (NestJS/Express/Fastify + TypeORM, NestJS + Sequelize, NestJS + Knex, NestJS + SQLite, NestJS and Express + SQL Server, NestJS + Prisma) against Postgres, MySQL, SQLite, and SQL Server.
 
 ## 🤝 Contributing
 

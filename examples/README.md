@@ -20,5 +20,6 @@ Runnable multi-replica apps (Postgres and MySQL, three replicas each; SQLite sha
 | [`nestjs-sqlite`](./nestjs-sqlite) | NestJS + `@nodejs-db-migration-lock/sqlite` | ports 3501–3503 |
 | [`nestjs-mssql`](./nestjs-mssql) | NestJS + `@nodejs-db-migration-lock/mssql` | ports 3601–3603 |
 | [`express-mssql`](./express-mssql) | Express + `@nodejs-db-migration-lock/mssql` | ports 3701–3703 |
+| [`nestjs-prisma`](./nestjs-prisma) | NestJS + Prisma Migrate + `PostgresTableLock` | ports 3801–3803 |
 
 From the repo root, build packages first (`npm install && npm run build`), then `podman-compose up --build` inside an example directory.

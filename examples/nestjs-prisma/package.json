@@ -1,0 +1,28 @@
+{
+  "name": "nestjs-prisma-replicas-example",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "prisma generate && tsc",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "@nodejs-db-migration-lock/core": "file:../../packages/core",
+    "@nodejs-db-migration-lock/postgres": "file:../../packages/postgres",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "pg": "^8.16.3",
+    "prisma": "^7.10.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.15.5",
+    "typescript": "^7.0.2"
+  }
+}
