@@ -2,7 +2,7 @@
  * Unit tests for retry utilities
  */
 
-import { withRetry, sleep } from '../retry';
+import { withRetry, sleep, isTransientDbError } from '../retry';
 
 describe('Retry Utilities', () => {
   describe('sleep', () => {
@@ -187,6 +187,24 @@ describe('Retry Utilities', () => {
       
       expect(result).toBe(5);
       expect(fn).toHaveBeenCalledTimes(5);
+    });
+  });
+
+  describe('isTransientDbError', () => {
+    it('matches connection resets and deadlocks', () => {
+      const reset = Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' });
+      const deadlock = Object.assign(new Error('deadlock detected'), { code: '40P01' });
+      const mysql = Object.assign(new Error('Deadlock found'), { errno: 1213 });
+      const mssql = Object.assign(new Error('Transaction was deadlocked'), { number: 1205 });
+      expect(isTransientDbError(reset)).toBe(true);
+      expect(isTransientDbError(deadlock)).toBe(true);
+      expect(isTransientDbError(mysql)).toBe(true);
+      expect(isTransientDbError(mssql)).toBe(true);
+    });
+
+    it('rejects a query error', () => {
+      expect(isTransientDbError(Object.assign(new Error('syntax error'), { code: '42601' }))).toBe(false);
+      expect(isTransientDbError('down')).toBe(false);
     });
   });
 });

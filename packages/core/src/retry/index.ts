@@ -2,6 +2,8 @@
  * Retry utilities for lock acquisition
  */
 
+export { isTransientDbError } from './transient';
+
 export interface RetryConfig {
   maxRetries: number;
   retryIntervalMs: number;
