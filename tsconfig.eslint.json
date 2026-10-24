@@ -10,6 +10,10 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@nodejs-db-migration-lock/*": ["packages/*/src/index.ts"]
+    },
     "types": ["node", "jest"]
   },
   "include": [
