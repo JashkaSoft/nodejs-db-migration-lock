@@ -2,6 +2,7 @@ import {
   LockProvider,
   LockStatus,
   SqlDriver,
+  isTransientDbError,
   lockHolder,
   normalizeAcquireOptions,
   quoteIdent,
@@ -22,6 +23,23 @@ const DEFAULT_OPTIONS = {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withTransientRetry<T>(
+  operation: () => Promise<T>,
+  maxAttempts = 12,
+): Promise<T> {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isTransientDbError(error) || attempt === maxAttempts - 1) {
+        throw error;
+      }
+      await sleep(50 * (attempt + 1));
+    }
+  }
+  throw new Error('withTransientRetry exhausted attempts');
 }
 
 function isDuplicateRelationError(error: unknown): boolean {
@@ -73,18 +91,20 @@ export class YugabyteTableLock implements LockProvider {
     `;
 
     for (let attempt = 0; attempt < 8; attempt += 1) {
-      const existing = await driver.query<{ exists: boolean }>(
-        `SELECT EXISTS (
-           SELECT 1 FROM information_schema.tables
-           WHERE table_schema = current_schema() AND table_name = $1
-         ) AS exists`,
-        [this.tableName],
+      const existing = await withTransientRetry(() =>
+        driver.query<{ exists: boolean }>(
+          `SELECT EXISTS (
+             SELECT 1 FROM information_schema.tables
+             WHERE table_schema = current_schema() AND table_name = $1
+           ) AS exists`,
+          [this.tableName],
+        ),
       );
       if (existing[0]?.exists) {
         break;
       }
       try {
-        await driver.query(createSql);
+        await withTransientRetry(() => driver.query(createSql));
       } catch (error) {
         if (!isDuplicateRelationError(error)) {
           throw error;
@@ -93,18 +113,26 @@ export class YugabyteTableLock implements LockProvider {
       await sleep(50 * (attempt + 1));
     }
 
-    await driver.query(`
+    await withTransientRetry(() =>
+      driver.query(`
       CREATE TABLE IF NOT EXISTS ${table} (
         id BIGINT PRIMARY KEY,
         holder TEXT NOT NULL,
         locked_at BIGINT NOT NULL,
         expires_at BIGINT NOT NULL
       )
-    `);
+    `),
+    );
 
-    await driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS holder TEXT`);
-    await driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS locked_at BIGINT`);
-    await driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS expires_at BIGINT`);
+    await withTransientRetry(() =>
+      driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS holder TEXT`),
+    );
+    await withTransientRetry(() =>
+      driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS locked_at BIGINT`),
+    );
+    await withTransientRetry(() =>
+      driver.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS expires_at BIGINT`),
+    );
   }
 
   async acquire(driver: SqlDriver, options?: Parameters<LockProvider['acquire']>[1]): Promise<boolean> {
