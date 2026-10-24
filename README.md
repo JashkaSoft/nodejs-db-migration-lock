@@ -4,6 +4,38 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## Contents
+
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Packages](#packages)
+- [Quick Start](#quick-start)
+  - [Install](#install)
+  - [Basic Usage with TypeORM](#basic-usage-with-typeorm)
+  - [Usage with node-postgres (pg)](#usage-with-node-postgres-pg)
+- [Architecture](#architecture)
+  - [SqlDriver](#1-sqldriver)
+  - [LockProvider](#2-lockprovider)
+  - [MigrationRunner](#3-migrationrunner)
+- [Documentation](#documentation)
+- [Use Cases](#use-cases)
+  - [Kubernetes Deployments](#kubernetes-deployments)
+  - [Zero-Downtime Deployments](#zero-downtime-deployments)
+  - [CI/CD Pipelines](#cicd-pipelines)
+- [Lock Strategies](#lock-strategies)
+  - [PostgreSQL](#postgresql)
+  - [MySQL](#mysql)
+  - [SQLite](#sqlite)
+  - [SQL Server](#sql-server)
+- [Long migrations](#long-migrations)
+- [Releasing a stuck lock](#releasing-a-stuck-lock)
+- [Development](#development)
+- [Contributing](#contributing)
+  - [Adding a New Database](#adding-a-new-database)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+- [Related Projects](#related-projects)
+
 ## 🎯 Overview
 
 `nodejs-db-migration-lock` ensures that only one process runs database migrations at a time in distributed environments. Whether you're deploying to Kubernetes with multiple replicas, running zero-downtime deployments, or have multiple CI/CD pipelines, this library prevents concurrent migration conflicts.
