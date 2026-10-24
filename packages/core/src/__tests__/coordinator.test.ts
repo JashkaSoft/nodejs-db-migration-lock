@@ -475,6 +475,68 @@ describe('MigrationCoordinator', () => {
       expect(lockProvider.lastAcquireOptions).toEqual({ signal: undefined, timeoutMs: 2500 });
     });
 
+    it('retries a dropped connection and then acquires the lock', async () => {
+      const acquire = lockProvider.acquire.bind(lockProvider);
+      let calls = 0;
+      lockProvider.acquire = async (driver, options) => {
+        calls += 1;
+        if (calls < 3) {
+          throw Object.assign(new Error('Connection terminated unexpectedly'), { code: 'ECONNRESET' });
+        }
+        return acquire(driver, options);
+      };
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+        retryConfig: { maxRetries: 5, retryIntervalMs: 1, timeoutMs: 5000 },
+      });
+
+      await coordinator.migrate();
+      expect(calls).toBe(3);
+      expect(migrationRunner.runCalls).toBe(1);
+    });
+
+    it('does not retry a query error', async () => {
+      lockProvider.acquire = async () => {
+        throw Object.assign(new Error('syntax error'), { code: '42601' });
+      };
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+        retryConfig: { maxRetries: 5, retryIntervalMs: 1 },
+      });
+
+      await expect(coordinator.migrate()).rejects.toThrow(LockAcquisitionError);
+      expect(migrationRunner.runCalls).toBe(0);
+    });
+
+    it('retries a deadlock on a database-side lock and then reports timeout', async () => {
+      lockProvider.waitsInDatabase = true;
+      let calls = 0;
+      lockProvider.acquire = async () => {
+        calls += 1;
+        if (calls === 1) {
+          throw Object.assign(new Error('deadlock detected'), { code: '40P01' });
+        }
+        return false;
+      };
+
+      const coordinator = new MigrationCoordinator({
+        driver,
+        lockProvider,
+        migrationRunner,
+        retryConfig: { maxRetries: 4, retryIntervalMs: 1, timeoutMs: 2500 },
+      });
+
+      await expect(coordinator.migrate()).rejects.toThrow(LockTimeoutError);
+      expect(calls).toBe(2);
+      expect(migrationRunner.runCalls).toBe(0);
+    });
+
     it('holds a transaction-scoped lock across the migration and skips release', async () => {
       lockProvider.transactionScoped = true;
       let inside = false;

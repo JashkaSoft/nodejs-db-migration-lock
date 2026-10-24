@@ -31,4 +31,4 @@ export {
 } from './errors';
 
 // Export retry utilities
-export { RetryConfig, RetryOptions, withRetry, sleep } from './retry';
+export { RetryConfig, RetryOptions, withRetry, sleep, isTransientDbError } from './retry';

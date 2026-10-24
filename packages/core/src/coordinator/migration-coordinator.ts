@@ -3,7 +3,7 @@ import { MigrationRunner } from '../interfaces/migration-runner';
 import { SqlDriver } from '../interfaces/sql-driver';
 import { AcquireOptions } from '../lock/acquire-options';
 import { withProcessLock } from '../lock/process-mutex';
-import { withRetry, RetryConfig } from '../retry';
+import { withRetry, RetryConfig, isTransientDbError, sleep } from '../retry';
 import {
   LockAcquisitionError,
   LockLeaseLostError,
@@ -177,15 +177,11 @@ export class MigrationCoordinator {
     };
 
     if (this.lockProvider.waitsInDatabase) {
-      if (signal?.aborted) {
-        throw new Error('Operation aborted');
-      }
-      this.onLockWaiting?.(1, 1);
-      return this.lockProvider.acquire(this.driver, options);
+      return this.acquireWhileReconnecting(signal, options);
     }
 
     return withRetry(
-      () => this.lockProvider.acquire(this.driver, options),
+      () => this.acquireOrFalseOnTransient(options),
       (acquired) => !acquired,
       {
         ...this.retryConfig,
@@ -193,6 +189,43 @@ export class MigrationCoordinator {
         onRetry: this.onLockWaiting,
       },
     );
+  }
+
+  /**
+   * A database wait already blocks until timeoutMs. Retry only when the
+   * connection drops or the database reports a deadlock, not when the lock is busy.
+   */
+  private async acquireWhileReconnecting(
+    signal: AbortSignal | undefined,
+    options: AcquireOptions,
+  ): Promise<boolean> {
+    const attempts = Math.max(1, this.retryConfig.maxRetries);
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      if (signal?.aborted) {
+        throw new Error('Operation aborted');
+      }
+      this.onLockWaiting?.(attempt === 1 ? 1 : attempt, attempt === 1 ? 1 : attempts);
+      try {
+        return await this.lockProvider.acquire(this.driver, options);
+      } catch (error) {
+        if (!isTransientDbError(error) || attempt === attempts) {
+          throw error;
+        }
+        await sleep(this.retryConfig.retryIntervalMs, signal);
+      }
+    }
+    return false;
+  }
+
+  private async acquireOrFalseOnTransient(options: AcquireOptions): Promise<boolean> {
+    try {
+      return await this.lockProvider.acquire(this.driver, options);
+    } catch (error) {
+      if (!isTransientDbError(error)) {
+        throw error;
+      }
+      return false;
+    }
   }
 
   private startRenewal(driver: SqlDriver): () => Promise<void> {
