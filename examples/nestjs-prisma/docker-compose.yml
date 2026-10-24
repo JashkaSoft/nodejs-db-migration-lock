@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: docker.io/library/postgres:18-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  replica-1:
+    image: migration-lock-nestjs-prisma:local
+    build:
+      context: ../..
+      dockerfile: examples/nestjs-prisma/Dockerfile
+    environment: &db
+      DATABASE_URL: postgresql://app:app@postgres:5432/app
+      REPLICA_ID: prisma-1
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3801:3000"
+
+  replica-2:
+    image: migration-lock-nestjs-prisma:local
+    build:
+      context: ../..
+      dockerfile: examples/nestjs-prisma/Dockerfile
+    environment:
+      <<: *db
+      REPLICA_ID: prisma-2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3802:3000"
+
+  replica-3:
+    image: migration-lock-nestjs-prisma:local
+    build:
+      context: ../..
+      dockerfile: examples/nestjs-prisma/Dockerfile
+    environment:
+      <<: *db
+      REPLICA_ID: prisma-3
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3803:3000"
