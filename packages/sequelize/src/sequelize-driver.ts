@@ -6,6 +6,70 @@ type ConnectionManager = {
   releaseConnection(connection: unknown): Promise<void>;
 };
 
+function isOkPacket(value: unknown): value is { affectedRows?: number; insertId?: number } {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    ('affectedRows' in value || 'insertId' in value || 'fieldCount' in value)
+  );
+}
+
+function normalizeSequelizeQueryResult<T>(raw: unknown): T[] {
+  if (!Array.isArray(raw)) {
+    if (isOkPacket(raw)) {
+      return [raw as T];
+    }
+    if (raw && typeof raw === 'object') {
+      return [raw as T];
+    }
+    return [];
+  }
+
+  if (raw.length === 2) {
+    const [left, right] = raw;
+    // Postgres raw queries: [rows, queryResult]; MySQL may use [[], metadata]
+    if (Array.isArray(left) && left.length > 0) {
+      return left as T[];
+    }
+    if (left && typeof left === 'object' && !Array.isArray(left) && typeof right === 'number') {
+      return [left as T];
+    }
+    if (isOkPacket(right)) {
+      return [right as T];
+    }
+    if (typeof right === 'number' && (typeof left === 'number' || left === null || left === undefined)) {
+      return [{ affectedRows: right } as T];
+    }
+    if (Array.isArray(left) && left === right) {
+      return left as T[];
+    }
+    if (isOkPacket(left)) {
+      return [left as T];
+    }
+    if (typeof right === 'number') {
+      return [{ affectedRows: right } as T];
+    }
+    if (right && typeof right === 'object' && !Array.isArray(right)) {
+      return [right as T];
+    }
+  }
+
+  if (raw.length > 0) {
+    const first = raw[0];
+    if (Array.isArray(first)) {
+      return first as T[];
+    }
+    if (first !== undefined && first !== null && typeof first === 'object' && !isOkPacket(first)) {
+      return raw as T[];
+    }
+    if (isOkPacket(first)) {
+      return [first as T];
+    }
+  }
+
+  return [];
+}
+
 /**
  * Adapter for a Sequelize instance.
  * When connectionManager is present, one connection is checked out and every
@@ -58,20 +122,8 @@ export class SequelizeDriver implements SqlDriver {
       }
     }
 
-    const [results, metadata] = await this.sequelize.query(sql, options);
-    if (Array.isArray(results) && results.length > 0) {
-      return results as T[];
-    }
-    if (metadata && typeof metadata === 'object') {
-      return [metadata as T];
-    }
-    if (Array.isArray(results)) {
-      return results as T[];
-    }
-    if (results && typeof results === 'object') {
-      return [results as T];
-    }
-    return [];
+    const raw = await this.sequelize.query(sql, options);
+    return normalizeSequelizeQueryResult<T>(raw);
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {

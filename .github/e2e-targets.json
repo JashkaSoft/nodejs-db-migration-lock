@@ -1,0 +1,142 @@
+[
+  {
+    "name": "PostgreSQL 18",
+    "run": "npm run test:e2e:postgres:node-pg",
+    "image_env": "POSTGRES_IMAGE",
+    "image": "docker.io/library/postgres:18-alpine",
+    "packages": ["postgres"]
+  },
+  {
+    "name": "PostgreSQL 17",
+    "run": "npm run test:e2e:postgres:node-pg",
+    "image_env": "POSTGRES_IMAGE",
+    "image": "docker.io/library/postgres:17-alpine",
+    "packages": ["postgres"]
+  },
+  {
+    "name": "MySQL 9.7",
+    "run": "npm run test:e2e:mysql:mysql2",
+    "image_env": "MYSQL_IMAGE",
+    "image": "docker.io/library/mysql:9.7",
+    "packages": ["mysql"]
+  },
+  {
+    "name": "MySQL 8.4",
+    "run": "npm run test:e2e:mysql:mysql2",
+    "image_env": "MYSQL_IMAGE",
+    "image": "docker.io/library/mysql:8.4",
+    "packages": ["mysql"]
+  },
+  {
+    "name": "MariaDB 11.8",
+    "run": "npm run test:e2e:mysql:mysql2",
+    "image_env": "MYSQL_IMAGE",
+    "image": "docker.io/library/mariadb:11.8",
+    "packages": ["mysql"]
+  },
+  {
+    "name": "MariaDB 10.11",
+    "run": "npm run test:e2e:mysql:mysql2",
+    "image_env": "MYSQL_IMAGE",
+    "image": "docker.io/library/mariadb:10.11",
+    "packages": ["mysql"]
+  },
+  {
+    "name": "SQL Server 2022",
+    "run": "npm run test:e2e:mssql:tedious",
+    "image_env": "MSSQL_IMAGE",
+    "image": "mcr.microsoft.com/mssql/server:2022-latest",
+    "packages": ["mssql"]
+  },
+  {
+    "name": "SQL Server 2019",
+    "run": "npm run test:e2e:mssql:tedious",
+    "image_env": "MSSQL_IMAGE",
+    "image": "mcr.microsoft.com/mssql/server:2019-latest",
+    "packages": ["mssql"]
+  },
+  {
+    "name": "CockroachDB 25.4",
+    "run": "npm run test:e2e:cockroach:pg",
+    "image_env": "COCKROACH_IMAGE",
+    "image": "docker.io/cockroachdb/cockroach:v25.4.18",
+    "packages": ["cockroach"]
+  },
+  {
+    "name": "CockroachDB 24.3",
+    "run": "npm run test:e2e:cockroach:pg",
+    "image_env": "COCKROACH_IMAGE",
+    "image": "docker.io/cockroachdb/cockroach:v24.3.37",
+    "packages": ["cockroach"]
+  },
+  {
+    "name": "YugabyteDB 2026.1",
+    "run": "npm run test:e2e:yugabyte:pg",
+    "image_env": "YUGABYTE_IMAGE",
+    "image": "docker.io/yugabytedb/yugabyte:2026.1.2.0-b137",
+    "packages": ["yugabyte"]
+  },
+  {
+    "name": "YugabyteDB 2025.2",
+    "run": "npm run test:e2e:yugabyte:pg",
+    "image_env": "YUGABYTE_IMAGE",
+    "image": "docker.io/yugabytedb/yugabyte:2025.2.8.0-b60",
+    "packages": ["yugabyte"]
+  },
+  {
+    "name": "Oracle 23",
+    "run": "npm run test:e2e:oracle:oracledb",
+    "image_env": "",
+    "image": "",
+    "packages": ["oracle"]
+  },
+  {
+    "name": "SQLite",
+    "run": "npm run test:e2e:sqlite:node-sqlite",
+    "image_env": "",
+    "image": "",
+    "packages": ["sqlite"]
+  },
+  {
+    "name": "TypeORM PostgreSQL 18",
+    "run": "npm run test:e2e:typeorm:postgres",
+    "image_env": "",
+    "image": "",
+    "packages": ["typeorm", "postgres"]
+  },
+  {
+    "name": "TypeORM MySQL 9.7",
+    "run": "npm run test:e2e:typeorm:mysql",
+    "image_env": "",
+    "image": "",
+    "packages": ["typeorm", "mysql"]
+  },
+  {
+    "name": "Sequelize PostgreSQL 18",
+    "run": "npm run test:e2e:sequelize:postgres",
+    "image_env": "",
+    "image": "",
+    "packages": ["sequelize", "postgres"]
+  },
+  {
+    "name": "Sequelize MySQL 9.7",
+    "run": "npm run test:e2e:sequelize:mysql",
+    "image_env": "",
+    "image": "",
+    "packages": ["sequelize", "mysql"]
+  },
+  {
+    "name": "MikroORM PostgreSQL 18",
+    "run": "npm run test:e2e:mikroorm:postgres",
+    "image_env": "",
+    "image": "",
+    "packages": ["mikroorm", "postgres"]
+  },
+  {
+    "name": "Kysely PostgreSQL 18",
+    "run": "npm run test:e2e:kysely:postgres",
+    "image_env": "",
+    "image": "",
+    "packages": ["kysely", "postgres"]
+  }
+]

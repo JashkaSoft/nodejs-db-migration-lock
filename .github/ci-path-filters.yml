@@ -1,0 +1,49 @@
+# Used by dorny/paths-filter in CI. Filter names map to packages/ folder names where applicable.
+code:
+  - 'packages/**'
+  - 'package.json'
+  - 'package-lock.json'
+  - 'lerna.json'
+  - 'tsconfig.json'
+  - '.github/**'
+  - 'examples/**'
+  - 'scripts/**'
+docs:
+  - '**/*.md'
+  - 'LICENSE'
+  - '.github/pull_request_template.md'
+  - '.cursor/**'
+  - '.vscode/**'
+# Root / shared infra: run the full e2e matrix (not .github CI scripts — those use package filters).
+global:
+  - 'package.json'
+  - 'package-lock.json'
+  - 'lerna.json'
+  - 'tsconfig.json'
+  - 'examples/**'
+core:
+  - 'packages/core/**'
+postgres:
+  - 'packages/postgres/**'
+mysql:
+  - 'packages/mysql/**'
+mssql:
+  - 'packages/mssql/**'
+cockroach:
+  - 'packages/cockroach/**'
+yugabyte:
+  - 'packages/yugabyte/**'
+oracle:
+  - 'packages/oracle/**'
+sqlite:
+  - 'packages/sqlite/**'
+typeorm:
+  - 'packages/typeorm/**'
+sequelize:
+  - 'packages/sequelize/**'
+mikroorm:
+  - 'packages/mikroorm/**'
+kysely:
+  - 'packages/kysely/**'
+knex:
+  - 'packages/knex/**'

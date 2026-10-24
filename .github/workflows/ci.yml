@@ -1,12 +1,50 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.plan.outputs.docs_only }}
+      run_unit: ${{ steps.plan.outputs.run_unit }}
+      run_e2e: ${{ steps.plan.outputs.run_e2e }}
+      e2e_matrix: ${{ steps.plan.outputs.e2e_matrix }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: .github/ci-path-filters.yml
+      - name: Compute CI plan from path filters
+        id: plan
+        env:
+          E2E_NODE_VERSION: "26"
+          FILTER_CODE: ${{ steps.filter.outputs.code }}
+          FILTER_DOCS: ${{ steps.filter.outputs.docs }}
+          FILTER_GLOBAL: ${{ steps.filter.outputs.global }}
+          FILTER_CORE: ${{ steps.filter.outputs.core }}
+          FILTER_POSTGRES: ${{ steps.filter.outputs.postgres }}
+          FILTER_MYSQL: ${{ steps.filter.outputs.mysql }}
+          FILTER_MSSQL: ${{ steps.filter.outputs.mssql }}
+          FILTER_COCKROACH: ${{ steps.filter.outputs.cockroach }}
+          FILTER_YUGABYTE: ${{ steps.filter.outputs.yugabyte }}
+          FILTER_ORACLE: ${{ steps.filter.outputs.oracle }}
+          FILTER_SQLITE: ${{ steps.filter.outputs.sqlite }}
+          FILTER_TYPEORM: ${{ steps.filter.outputs.typeorm }}
+          FILTER_SEQUELIZE: ${{ steps.filter.outputs.sequelize }}
+          FILTER_MIKROORM: ${{ steps.filter.outputs.mikroorm }}
+          FILTER_KYSELY: ${{ steps.filter.outputs.kysely }}
+          FILTER_KNEX: ${{ steps.filter.outputs.knex }}
+        run: bash .github/scripts/compute-ci-plan.sh
+
   test:
+    needs: changes
+    if: needs.changes.outputs.run_unit == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -21,108 +59,27 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  # node × database image. setup-node only runs npm; NODE_VERSION selects the suite image.
-  # ORM suites stay on the current server. They call the same dialect lock.
-  # Oracle Free 23 is the only image whose service name matches that suite.
-  # SQLite's engine is the Node image, so it has no second server tag.
+  # E2e rows from paths-filter + build-e2e-matrix.js. Full matrix only when global/core
+  # (root package.json, lockfile, examples, packages/core) changes — not for .github/ CI edits alone.
   e2e:
+    needs: changes
+    if: needs.changes.outputs.run_e2e == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node: [26]
-        target:
-          - name: PostgreSQL 18
-            run: npm run test:e2e:postgres:node-pg
-            image_env: POSTGRES_IMAGE
-            image: docker.io/library/postgres:18-alpine
-          - name: PostgreSQL 17
-            run: npm run test:e2e:postgres:node-pg
-            image_env: POSTGRES_IMAGE
-            image: docker.io/library/postgres:17-alpine
-          - name: MySQL 9.7
-            run: npm run test:e2e:mysql:mysql2
-            image_env: MYSQL_IMAGE
-            image: docker.io/library/mysql:9.7
-          - name: MySQL 8.4
-            run: npm run test:e2e:mysql:mysql2
-            image_env: MYSQL_IMAGE
-            image: docker.io/library/mysql:8.4
-          - name: MariaDB 11.8
-            run: npm run test:e2e:mysql:mysql2
-            image_env: MYSQL_IMAGE
-            image: docker.io/library/mariadb:11.8
-          - name: MariaDB 10.11
-            run: npm run test:e2e:mysql:mysql2
-            image_env: MYSQL_IMAGE
-            image: docker.io/library/mariadb:10.11
-          - name: SQL Server 2022
-            run: npm run test:e2e:mssql:tedious
-            image_env: MSSQL_IMAGE
-            image: mcr.microsoft.com/mssql/server:2022-latest
-          - name: SQL Server 2019
-            run: npm run test:e2e:mssql:tedious
-            image_env: MSSQL_IMAGE
-            image: mcr.microsoft.com/mssql/server:2019-latest
-          - name: CockroachDB 25.4
-            run: npm run test:e2e:cockroach:pg
-            image_env: COCKROACH_IMAGE
-            image: docker.io/cockroachdb/cockroach:v25.4.18
-          - name: CockroachDB 24.3
-            run: npm run test:e2e:cockroach:pg
-            image_env: COCKROACH_IMAGE
-            image: docker.io/cockroachdb/cockroach:v24.3.37
-          - name: YugabyteDB 2026.1
-            run: npm run test:e2e:yugabyte:pg
-            image_env: YUGABYTE_IMAGE
-            image: docker.io/yugabytedb/yugabyte:2026.1.2.0-b137
-          - name: YugabyteDB 2025.2
-            run: npm run test:e2e:yugabyte:pg
-            image_env: YUGABYTE_IMAGE
-            image: docker.io/yugabytedb/yugabyte:2025.2.8.0-b60
-          - name: Oracle 23
-            run: npm run test:e2e:oracle:oracledb
-            image_env: ""
-            image: ""
-          - name: SQLite
-            run: npm run test:e2e:sqlite:node-sqlite
-            image_env: ""
-            image: ""
-          - name: TypeORM PostgreSQL 18
-            run: npm run test:e2e:typeorm:postgres
-            image_env: ""
-            image: ""
-          - name: TypeORM MySQL 9.7
-            run: npm run test:e2e:typeorm:mysql
-            image_env: ""
-            image: ""
-          - name: Sequelize PostgreSQL 18
-            run: npm run test:e2e:sequelize:postgres
-            image_env: ""
-            image: ""
-          - name: Sequelize MySQL 9.7
-            run: npm run test:e2e:sequelize:mysql
-            image_env: ""
-            image: ""
-          - name: MikroORM PostgreSQL 18
-            run: npm run test:e2e:mikroorm:postgres
-            image_env: ""
-            image: ""
-          - name: Kysely PostgreSQL 18
-            run: npm run test:e2e:kysely:postgres
-            image_env: ""
-            image: ""
-    name: e2e / ${{ matrix.target.name }} / node ${{ matrix.node }}
+        include: ${{ fromJSON(needs.changes.outputs.e2e_matrix) }}
+    name: e2e / ${{ matrix.name }} / node ${{ matrix.node }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-      - name: ${{ matrix.target.name }}
+      - name: ${{ matrix.name }}
         run: |
           export NODE_VERSION="${{ matrix.node }}"
-          image_env="${{ matrix.target.image_env }}"
+          image_env="${{ matrix.image_env }}"
           if [ -n "$image_env" ]; then
-            export "$image_env"="${{ matrix.target.image }}"
+            export "$image_env"="${{ matrix.image }}"
           fi
-          ${{ matrix.target.run }}
+          ${{ matrix.run }}

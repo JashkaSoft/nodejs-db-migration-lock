@@ -94,6 +94,51 @@ describe('SequelizeDriver', () => {
     ]);
   });
 
+  it('wraps numeric mysql metadata as affectedRows', async () => {
+    sequelize.dialect = 'mysql';
+    sequelize.nextResult = [[], 1];
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await expect(driver.query('INSERT INTO t (id) VALUES (1)')).resolves.toEqual([
+      { affectedRows: 1 },
+    ]);
+  });
+
+  it('returns ok packet rows from mysql insert results', async () => {
+    sequelize.dialect = 'mysql';
+    sequelize.nextResult = [[{ affectedRows: 2, insertId: 0, fieldCount: 0 }], undefined];
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await expect(driver.query('UPDATE t SET id = 1')).resolves.toEqual([
+      { affectedRows: 2, insertId: 0, fieldCount: 0 },
+    ]);
+  });
+
+  it('returns empty rows for mysql select with no matches', async () => {
+    sequelize.dialect = 'mysql';
+    sequelize.nextResult = [[], []];
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await expect(driver.query('SELECT holder FROM migration_lock WHERE id = ?', [1])).resolves.toEqual(
+      [],
+    );
+  });
+
+  it('maps sequelize insert tuple to affectedRows', async () => {
+    sequelize.dialect = 'mysql';
+    sequelize.nextResult = [0, 1];
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await expect(driver.query('INSERT INTO migration_lock (id) VALUES (1)')).resolves.toEqual([
+      { affectedRows: 1 },
+    ]);
+  });
+
+  it('returns postgres raw query rows, not the queryResult object', async () => {
+    sequelize.dialect = 'postgres';
+    sequelize.nextResult = [[{ exists: true }], { command: 'SELECT', rowCount: 1 }];
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await expect(
+      driver.query('SELECT EXISTS (SELECT 1) AS exists', [1]),
+    ).resolves.toEqual([{ exists: true }]);
+  });
+
   it('propagates query errors', async () => {
     sequelize.shouldFail = true;
     const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
