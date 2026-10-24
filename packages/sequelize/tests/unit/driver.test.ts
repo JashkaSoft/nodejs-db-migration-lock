@@ -130,6 +130,15 @@ describe('SequelizeDriver', () => {
     ]);
   });
 
+  it('returns postgres raw query rows, not the queryResult object', async () => {
+    sequelize.dialect = 'postgres';
+    sequelize.nextResult = [[{ exists: true }], { command: 'SELECT', rowCount: 1 }];
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await expect(
+      driver.query('SELECT EXISTS (SELECT 1) AS exists', [1]),
+    ).resolves.toEqual([{ exists: true }]);
+  });
+
   it('propagates query errors', async () => {
     sequelize.shouldFail = true;
     const driver = new SequelizeDriver(sequelize as unknown as Sequelize);

@@ -27,16 +27,20 @@ function normalizeSequelizeQueryResult<T>(raw: unknown): T[] {
 
   if (raw.length === 2) {
     const [left, right] = raw;
-    if (isOkPacket(right)) {
-      return [right as T];
+    // Postgres raw queries: [rows, queryResult]; MySQL may use [[], metadata]
+    if (Array.isArray(left) && left.length > 0) {
+      return left as T[];
     }
-    if (right && typeof right === 'object' && !Array.isArray(right)) {
+    if (left && typeof left === 'object' && !Array.isArray(left) && typeof right === 'number') {
+      return [left as T];
+    }
+    if (isOkPacket(right)) {
       return [right as T];
     }
     if (typeof right === 'number' && (typeof left === 'number' || left === null || left === undefined)) {
       return [{ affectedRows: right } as T];
     }
-    if (Array.isArray(left) && (left.length > 0 || left === right)) {
+    if (Array.isArray(left) && left === right) {
       return left as T[];
     }
     if (isOkPacket(left)) {
@@ -44,6 +48,9 @@ function normalizeSequelizeQueryResult<T>(raw: unknown): T[] {
     }
     if (typeof right === 'number') {
       return [{ affectedRows: right } as T];
+    }
+    if (right && typeof right === 'object' && !Array.isArray(right)) {
+      return [right as T];
     }
   }
 
