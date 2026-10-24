@@ -141,14 +141,23 @@ class MySQLTableLock implements LockProvider {
   }
 }
 
+class MySQLMigrationRunner implements MigrationRunner {
+  constructor(private readonly pool: Pool) {}
+
+  async run(): Promise<void> {
+    console.log('Running MySQL migrations...');
+    // Your migration logic here, e.g. await this.pool.query(...)
+  }
+}
+
 /**
  * Example usage
  */
 async function example() {
-  // Note: This is pseudo-code, mysql2 would need to be installed
-  const mysql = require('mysql2/promise');
-  
-  const pool = await mysql.createPool({
+  // Note: mysql2 must be installed to run this example
+  const mysql = await import('mysql2/promise');
+
+  const pool = mysql.createPool({
     host: 'localhost',
     user: 'root',
     password: 'password',
@@ -157,18 +166,11 @@ async function example() {
 
   const driver = new MySQLDriver(pool);
   const lockProvider = new MySQLAdvisoryLock('my_migration_lock');
-  
-  class MyMigrationRunner implements MigrationRunner {
-    async run(): Promise<void> {
-      console.log('Running MySQL migrations...');
-      // Your migration logic here
-    }
-  }
 
   const coordinator = new MigrationCoordinator({
     driver,
     lockProvider,
-    migrationRunner: new MyMigrationRunner(),
+    migrationRunner: new MySQLMigrationRunner(pool),
   });
 
   await coordinator.migrate();
@@ -195,5 +197,6 @@ export {
   MySQLDriver,
   MySQLAdvisoryLock,
   MySQLTableLock,
+  MySQLMigrationRunner,
 };
 

@@ -3,38 +3,25 @@
  */
 
 import { Pool } from 'pg';
-import { 
-  MigrationCoordinator, 
+import {
+  MigrationCoordinator,
   MigrationRunner,
-  LockTimeoutError 
+  LockTimeoutError,
 } from '@nodejs-db-migration-lock/core';
-import { 
-  NodePgDriver, 
-  PostgresAdvisoryLock 
+import {
+  NodePgDriver,
+  PostgresAdvisoryLock,
 } from '@nodejs-db-migration-lock/postgres';
 
-// Create PostgreSQL connection pool
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'password',
-  database: process.env.DB_NAME || 'myapp',
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
-
-// Custom migration runner that executes SQL files or statements
 class CustomMigrationRunner implements MigrationRunner {
-  constructor(private pool: Pool) {}
+  constructor(private readonly pool: Pool) {}
 
   async run(): Promise<void> {
     const client = await this.pool.connect();
-    
+
     try {
       await client.query('BEGIN');
-      
+
       console.log('📝 Executing migration 001: Create users table');
       await client.query(`
         CREATE TABLE IF NOT EXISTS users (
@@ -44,7 +31,7 @@ class CustomMigrationRunner implements MigrationRunner {
           created_at TIMESTAMP DEFAULT NOW()
         );
       `);
-      
+
       console.log('📝 Executing migration 002: Create posts table');
       await client.query(`
         CREATE TABLE IF NOT EXISTS posts (
@@ -55,13 +42,13 @@ class CustomMigrationRunner implements MigrationRunner {
           created_at TIMESTAMP DEFAULT NOW()
         );
       `);
-      
+
       console.log('📝 Executing migration 003: Add indexes');
       await client.query(`
         CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
         CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       `);
-      
+
       await client.query('COMMIT');
       console.log('✅ All migrations executed successfully');
     } catch (error) {
@@ -73,27 +60,51 @@ class CustomMigrationRunner implements MigrationRunner {
   }
 }
 
-async function runMigrations() {
+function createPool(): Pool {
+  return new Pool({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'password',
+    database: process.env.DB_NAME || 'myapp',
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  });
+}
+
+async function runMigrations(): Promise<void> {
+  const pool = createPool();
+  let poolClosed = false;
+  const closePool = async (): Promise<void> => {
+    if (poolClosed) {
+      return;
+    }
+    poolClosed = true;
+    await pool.end();
+  };
+
+  process.once('SIGINT', () => {
+    console.log('\n⚠️  Shutting down...');
+    void closePool().finally(() => process.exit(0));
+  });
+
   console.log('🔌 Connecting to PostgreSQL...');
-  
-  // Test connection
+
   try {
     await pool.query('SELECT 1');
     console.log('✅ Database connection successful');
   } catch (error) {
     console.error('❌ Failed to connect to database:', error);
+    await closePool();
     process.exit(1);
   }
 
-  // Create driver adapter
   const driver = new NodePgDriver(pool);
-
-  // Use advisory lock (fast and automatically cleaned up)
   const lockProvider = new PostgresAdvisoryLock({
     lockId: 123456789,
   });
 
-  // Create coordinator
   const coordinator = new MigrationCoordinator({
     driver,
     lockProvider,
@@ -125,20 +136,12 @@ async function runMigrations() {
     }
     process.exit(1);
   } finally {
-    await pool.end();
+    await closePool();
     console.log('👋 Connection pool closed');
   }
 }
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n⚠️  Shutting down...');
-  await pool.end();
-  process.exit(0);
-});
 
 runMigrations().catch((error) => {
   console.error('Fatal error:', error);
   process.exit(1);
 });
-

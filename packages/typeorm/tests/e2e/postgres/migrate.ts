@@ -10,17 +10,19 @@ import { TypeORMDriver } from '@nodejs-db-migration-lock/typeorm';
 
 const PROCESS_ID = process.env.PROCESS_ID || 'unknown';
 
-const dataSource = new DataSource({
-  type: 'postgres',
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-  username: process.env.POSTGRES_USER || 'testuser',
-  password: process.env.POSTGRES_PASSWORD || 'testpass',
-  database: process.env.POSTGRES_DB || 'migration_test',
-  entities: [],
-  migrations: [],
-  synchronize: false,
-});
+function createDataSource(): DataSource {
+  return new DataSource({
+    type: 'postgres',
+    host: process.env.POSTGRES_HOST || 'localhost',
+    port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+    username: process.env.POSTGRES_USER || 'testuser',
+    password: process.env.POSTGRES_PASSWORD || 'testpass',
+    database: process.env.POSTGRES_DB || 'migration_test',
+    entities: [],
+    migrations: [],
+    synchronize: false,
+  });
+}
 
 class TypeOrmTestRunner implements MigrationRunner {
   constructor(private readonly source: DataSource, private readonly processId: string) {}
@@ -86,6 +88,7 @@ async function logAttempt(
 }
 
 async function runMigration(): Promise<void> {
+  const dataSource = createDataSource();
   await dataSource.initialize();
   const driver = new TypeORMDriver(dataSource);
   let lockAcquiredTime: Date | null = null;

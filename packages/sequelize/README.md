@@ -14,16 +14,25 @@ npm install sequelize
 
 ```typescript
 import { Sequelize } from 'sequelize';
-import { MigrationCoordinator } from '@nodejs-db-migration-lock/core';
+import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
 import { SequelizeDriver } from '@nodejs-db-migration-lock/sequelize';
 import { PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
+
+class SequelizeMigrationRunner implements MigrationRunner {
+  constructor(private readonly sequelize: Sequelize) {}
+
+  async run(): Promise<void> {
+    // Pair with Umzug or Sequelize CLI — see examples/nestjs-sequelize
+    await this.sequelize.authenticate();
+  }
+}
 
 const sequelize = new Sequelize(/* ... */);
 
 const coordinator = new MigrationCoordinator({
   driver: new SequelizeDriver(sequelize),
   lockProvider: new PostgresTableLock(),
-  migrationRunner,
+  migrationRunner: new SequelizeMigrationRunner(sequelize),
 });
 await coordinator.migrate();
 ```

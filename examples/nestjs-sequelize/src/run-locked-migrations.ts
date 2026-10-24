@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { Sequelize } from 'sequelize';
 import { Umzug, SequelizeStorage } from 'umzug';
 import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
@@ -6,12 +7,15 @@ import { MySQLTableLock } from '@nodejs-db-migration-lock/mysql';
 import { SequelizeDriver } from '@nodejs-db-migration-lock/sequelize';
 
 class SequelizeUmzugRunner implements MigrationRunner {
-  constructor(private readonly sequelize: Sequelize) {}
+  constructor(
+    private readonly sequelize: Sequelize,
+    private readonly migrationsRoot: string,
+  ) {}
 
   async run(): Promise<void> {
     const umzug = new Umzug({
       migrations: {
-        glob: ['migrations/*.js', { cwd: __dirname }],
+        glob: ['migrations/*.js', { cwd: this.migrationsRoot }],
       },
       context: this.sequelize.getQueryInterface(),
       storage: new SequelizeStorage({ sequelize: this.sequelize }),
@@ -22,6 +26,7 @@ class SequelizeUmzugRunner implements MigrationRunner {
 }
 
 export async function runLockedMigrations(sequelize: Sequelize): Promise<void> {
+  const migrationsRoot = path.join(__dirname);
   const replica = process.env.REPLICA_ID || 'unknown';
   const dbType = process.env.DB_TYPE || 'postgres';
   const lockProvider = dbType === 'mysql' ? new MySQLTableLock() : new PostgresTableLock();
@@ -29,7 +34,7 @@ export async function runLockedMigrations(sequelize: Sequelize): Promise<void> {
   const coordinator = new MigrationCoordinator({
     driver: new SequelizeDriver(sequelize),
     lockProvider,
-    migrationRunner: new SequelizeUmzugRunner(sequelize),
+    migrationRunner: new SequelizeUmzugRunner(sequelize, migrationsRoot),
     retryConfig: { maxRetries: 60, retryIntervalMs: 1000 },
     onLockWaiting: (attempt, max) =>
       console.log(`[replica ${replica}] waiting for migration lock (${attempt}/${max})`),

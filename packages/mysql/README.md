@@ -29,14 +29,22 @@ On first use the table lock creates `migration_lock` (or `tableName`) with `hold
 
 ```typescript
 import mysql from 'mysql2/promise';
-import { MigrationCoordinator } from '@nodejs-db-migration-lock/core';
+import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
 import { Mysql2Driver, MySQLTableLock } from '@nodejs-db-migration-lock/mysql';
+
+class MyMigrationRunner implements MigrationRunner {
+  constructor(private readonly pool: mysql.Pool) {}
+
+  async run(): Promise<void> {
+    await this.pool.query('SELECT 1');
+  }
+}
 
 const pool = mysql.createPool({ /* config */ });
 const coordinator = new MigrationCoordinator({
   driver: new Mysql2Driver(pool),
   lockProvider: new MySQLTableLock(),
-  migrationRunner,
+  migrationRunner: new MyMigrationRunner(pool),
 });
 await coordinator.migrate();
 ```

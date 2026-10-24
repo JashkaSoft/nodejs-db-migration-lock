@@ -384,10 +384,18 @@ const coordinator = new MigrationCoordinator({
 ### Pattern 3: Development Environment
 ```typescript
 // Fast feedback with advisory locks
+class PgMigrationRunner implements MigrationRunner {
+  constructor(private readonly pool: Pool) {}
+
+  async run(): Promise<void> {
+    await this.pool.query('SELECT 1'); // your migrations
+  }
+}
+
 const coordinator = new MigrationCoordinator({
   driver: new NodePgDriver(pool),
   lockProvider: new PostgresAdvisoryLock(), // Fast!
-  migrationRunner: new CustomMigrationRunner(),
+  migrationRunner: new PgMigrationRunner(pool),
   retryConfig: {
     maxRetries: 5,     // Don't wait long
     retryIntervalMs: 500,

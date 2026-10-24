@@ -6,17 +6,19 @@ import { TypeORMDriver } from '@nodejs-db-migration-lock/typeorm';
 
 const PROCESS_ID = process.env.PROCESS_ID || 'unknown';
 
-const dataSource = new DataSource({
-  type: 'mysql',
-  host: process.env.MYSQL_HOST || 'localhost',
-  port: parseInt(process.env.MYSQL_PORT || '3306', 10),
-  username: process.env.MYSQL_USER || 'testuser',
-  password: process.env.MYSQL_PASSWORD || 'testpass',
-  database: process.env.MYSQL_DB || 'migration_test',
-  entities: [],
-  migrations: [],
-  synchronize: false,
-});
+function createDataSource(): DataSource {
+  return new DataSource({
+    type: 'mysql',
+    host: process.env.MYSQL_HOST || 'localhost',
+    port: parseInt(process.env.MYSQL_PORT || '3306', 10),
+    username: process.env.MYSQL_USER || 'testuser',
+    password: process.env.MYSQL_PASSWORD || 'testpass',
+    database: process.env.MYSQL_DB || 'migration_test',
+    entities: [],
+    migrations: [],
+    synchronize: false,
+  });
+}
 
 class TypeOrmMysqlRunner implements MigrationRunner {
   constructor(private readonly source: DataSource, private readonly processId: string) {}
@@ -81,6 +83,7 @@ async function logAttempt(
 }
 
 async function runMigration(): Promise<void> {
+  const dataSource = createDataSource();
   await dataSource.initialize();
   let lockAcquiredTime: Date | null = null;
   try {

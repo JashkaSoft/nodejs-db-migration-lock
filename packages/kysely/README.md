@@ -7,17 +7,25 @@ npm install @nodejs-db-migration-lock/core @nodejs-db-migration-lock/kysely kyse
 ```
 
 ```typescript
-import { Kysely, PostgresDialect } from 'kysely';
+import { CompiledQuery, Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
-import { MigrationCoordinator } from '@nodejs-db-migration-lock/core';
+import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
 import { KyselyDriver } from '@nodejs-db-migration-lock/kysely';
 import { PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
+
+class MyMigrationRunner implements MigrationRunner {
+  constructor(private readonly db: Kysely<unknown>) {}
+
+  async run(): Promise<void> {
+    await this.db.executeQuery(CompiledQuery.raw('SELECT 1'));
+  }
+}
 
 const db = new Kysely({ dialect: new PostgresDialect({ pool: new Pool({ max: 4 }) }) });
 const coordinator = new MigrationCoordinator({
   driver: new KyselyDriver(db),
   lockProvider: new PostgresTableLock(),
-  migrationRunner,
+  migrationRunner: new MyMigrationRunner(db),
 });
 await coordinator.migrate();
 ```

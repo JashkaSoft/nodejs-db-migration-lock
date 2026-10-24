@@ -8,12 +8,28 @@ npm install @nodejs-db-migration-lock/core @nodejs-db-migration-lock/yugabyte pg
 
 ```typescript
 import { Pool } from 'pg';
-import { MigrationCoordinator } from '@nodejs-db-migration-lock/core';
+import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
 import { YugabyteDriver, YugabyteTableLock } from '@nodejs-db-migration-lock/yugabyte';
 
 const pool = new Pool({ host: 'localhost', port: 5433, user: 'yugabyte', password: 'yugabyte', database: 'yugabyte' });
 const driver = new YugabyteDriver(pool);
 const lock = new YugabyteTableLock();
+
+class MyMigrationRunner implements MigrationRunner {
+  constructor(private readonly pool: Pool) {}
+
+  async run(): Promise<void> {
+    await this.pool.query('SELECT 1');
+  }
+}
+
+const coordinator = new MigrationCoordinator({
+  driver,
+  lockProvider: lock,
+  migrationRunner: new MyMigrationRunner(pool),
+});
+await coordinator.migrate();
+await pool.end();
 ```
 
 The coordinator renews the lease on a second connection. `YugabyteDriver` must be constructed with a `pg` Pool so `fork()` can check one out.

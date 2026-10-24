@@ -7,13 +7,14 @@ import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock
 import { NodePgDriver, PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
 
 const execFileAsync = promisify(execFile);
-const exampleRoot = fileURLToPath(new URL('..', import.meta.url));
 
 class PrismaMigrateRunner implements MigrationRunner {
+  constructor(private readonly projectRoot: string) {}
+
   async run(): Promise<void> {
-    const prisma = path.join(exampleRoot, 'node_modules', '.bin', 'prisma');
+    const prisma = path.join(this.projectRoot, 'node_modules', '.bin', 'prisma');
     await execFileAsync(prisma, ['migrate', 'deploy'], {
-      cwd: exampleRoot,
+      cwd: this.projectRoot,
       env: process.env,
     });
     // Hold the lease long enough for the other replicas to log a wait.
@@ -22,6 +23,7 @@ class PrismaMigrateRunner implements MigrationRunner {
 }
 
 export async function runLockedMigrations(connectionString: string): Promise<void> {
+  const projectRoot = fileURLToPath(new URL('..', import.meta.url));
   const replica = process.env.REPLICA_ID || 'unknown';
   // Prisma Migrate refuses a non-empty public schema that has no migration
   // history. The lease table is created before migrate deploy, so keep it
@@ -39,7 +41,7 @@ export async function runLockedMigrations(connectionString: string): Promise<voi
   const coordinator = new MigrationCoordinator({
     driver,
     lockProvider: new PostgresTableLock(),
-    migrationRunner: new PrismaMigrateRunner(),
+    migrationRunner: new PrismaMigrateRunner(projectRoot),
     retryConfig: { maxRetries: 60, retryIntervalMs: 1000 },
     onLockWaiting: (attempt, max) =>
       console.log(`[replica ${replica}] waiting for migration lock (${attempt}/${max})`),

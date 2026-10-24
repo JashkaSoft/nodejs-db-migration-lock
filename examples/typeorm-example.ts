@@ -7,23 +7,8 @@ import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock
 import { PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
 import { TypeORMDriver } from '@nodejs-db-migration-lock/typeorm';
 
-// Configure your TypeORM DataSource
-const AppDataSource = new DataSource({
-  type: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  username: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'password',
-  database: process.env.DB_NAME || 'myapp',
-  // Add your entities and migrations
-  entities: [],
-  migrations: ['./migrations/*.ts'],
-  synchronize: false,
-});
-
-// Implement the migration runner
 class TypeORMMigrationRunner implements MigrationRunner {
-  constructor(private dataSource: DataSource) {}
+  constructor(private readonly dataSource: DataSource) {}
 
   async run(): Promise<void> {
     console.log('🚀 Running migrations...');
@@ -32,30 +17,41 @@ class TypeORMMigrationRunner implements MigrationRunner {
   }
 }
 
-// Main migration function
-async function runMigrations() {
+function createDataSource(): DataSource {
+  return new DataSource({
+    type: 'postgres',
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    username: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'password',
+    database: process.env.DB_NAME || 'myapp',
+    entities: [],
+    migrations: ['./migrations/*.ts'],
+    synchronize: false,
+  });
+}
+
+async function runMigrations(): Promise<void> {
+  const dataSource = createDataSource();
+
   console.log('🔌 Connecting to database...');
-  await AppDataSource.initialize();
+  await dataSource.initialize();
   console.log('✅ Database connected');
 
-  // Create the driver adapter
-  const driver = new TypeORMDriver(AppDataSource);
-
-  // Choose lock strategy (table-based for robustness)
+  const driver = new TypeORMDriver(dataSource);
   const lockProvider = new PostgresTableLock({
     tableName: 'migration_lock',
     lockId: 1,
   });
 
-  // Create migration coordinator
   const coordinator = new MigrationCoordinator({
     driver,
     lockProvider,
-    migrationRunner: new TypeORMMigrationRunner(AppDataSource),
+    migrationRunner: new TypeORMMigrationRunner(dataSource),
     retryConfig: {
-      maxRetries: 60,        // 60 attempts
-      retryIntervalMs: 2000, // 2 seconds between attempts
-      timeoutMs: 120000,     // 2 minute total timeout
+      maxRetries: 60,
+      retryIntervalMs: 2000,
+      timeoutMs: 120000,
     },
     onLockWaiting: (attempt, maxRetries) => {
       console.log(`⏳ Lock is held by another process, retrying... (${attempt}/${maxRetries})`);
@@ -82,24 +78,23 @@ async function runMigrations() {
     console.error('❌ Migration failed:', error);
     process.exit(1);
   } finally {
-    await AppDataSource.destroy();
+    if (dataSource.isInitialized) {
+      await dataSource.destroy();
+    }
   }
 }
 
-// Handle graceful shutdown
-process.on('SIGINT', async () => {
+process.on('SIGINT', () => {
   console.log('\n⚠️  Received SIGINT, shutting down gracefully...');
   process.exit(0);
 });
 
-process.on('SIGTERM', async () => {
+process.on('SIGTERM', () => {
   console.log('\n⚠️  Received SIGTERM, shutting down gracefully...');
   process.exit(0);
 });
 
-// Run migrations
 runMigrations().catch((error) => {
   console.error('Fatal error:', error);
   process.exit(1);
 });
-

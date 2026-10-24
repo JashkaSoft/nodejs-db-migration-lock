@@ -14,16 +14,25 @@ npm install typeorm
 
 ```typescript
 import { DataSource } from 'typeorm';
-import { MigrationCoordinator } from '@nodejs-db-migration-lock/core';
+import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
 import { TypeORMDriver } from '@nodejs-db-migration-lock/typeorm';
 import { PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
 
+const dataSource = new DataSource({ /* ... */ });
 await dataSource.initialize();
+
+class TypeORMMigrationRunner implements MigrationRunner {
+  constructor(private readonly dataSource: DataSource) {}
+
+  async run(): Promise<void> {
+    await this.dataSource.runMigrations({ transaction: 'all' });
+  }
+}
 
 const coordinator = new MigrationCoordinator({
   driver: new TypeORMDriver(dataSource),
   lockProvider: new PostgresTableLock(),
-  migrationRunner,
+  migrationRunner: new TypeORMMigrationRunner(dataSource),
 });
 await coordinator.migrate();
 ```

@@ -8,15 +8,23 @@ npm install @nodejs-db-migration-lock/core @nodejs-db-migration-lock/mikroorm @m
 
 ```typescript
 import { MikroORM } from '@mikro-orm/postgresql';
-import { MigrationCoordinator } from '@nodejs-db-migration-lock/core';
+import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
 import { MikroORMDriver } from '@nodejs-db-migration-lock/mikroorm';
 import { PostgresTableLock } from '@nodejs-db-migration-lock/postgres';
+
+class MikroOrmMigrationRunner implements MigrationRunner {
+  constructor(private readonly orm: MikroORM) {}
+
+  async run(): Promise<void> {
+    await this.orm.getMigrator().up();
+  }
+}
 
 const orm = await MikroORM.init({ /* host, dbName, entities */ });
 const coordinator = new MigrationCoordinator({
   driver: new MikroORMDriver(orm),
   lockProvider: new PostgresTableLock(),
-  migrationRunner,
+  migrationRunner: new MikroOrmMigrationRunner(orm),
 });
 await coordinator.migrate();
 ```

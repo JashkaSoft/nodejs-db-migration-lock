@@ -16,15 +16,23 @@ Requires Node.js 24.15+ (`node:sqlite`).
 
 ```typescript
 import { DatabaseSync } from 'node:sqlite';
-import { MigrationCoordinator } from '@nodejs-db-migration-lock/core';
+import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
 import { NodeSqliteDriver, SqliteTableLock } from '@nodejs-db-migration-lock/sqlite';
+
+class MyMigrationRunner implements MigrationRunner {
+  constructor(private readonly db: DatabaseSync) {}
+
+  async run(): Promise<void> {
+    this.db.exec('SELECT 1');
+  }
+}
 
 const db = new DatabaseSync(process.env.SQLITE_PATH || './app.db', { timeout: 5000 });
 
 const coordinator = new MigrationCoordinator({
   driver: new NodeSqliteDriver(db),
   lockProvider: new SqliteTableLock(),
-  migrationRunner,
+  migrationRunner: new MyMigrationRunner(db),
 });
 await coordinator.migrate();
 ```

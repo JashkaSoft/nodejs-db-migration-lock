@@ -11,8 +11,16 @@ npm install @nodejs-db-migration-lock/core @nodejs-db-migration-lock/oracle orac
 The connect string is Easy Connect, `host/service` or `host:port/service`, as in the [getting started guide](https://node-oracledb.readthedocs.io/en/latest/user_guide/introduction.html#getting-started-with-node-oracledb). Runnable samples are in the [node-oracledb examples](https://github.com/oracle/node-oracledb/tree/main/examples).
 
 ```typescript
-import { MigrationCoordinator } from '@nodejs-db-migration-lock/core';
+import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
 import { OracleAppLock, OracleDriver } from '@nodejs-db-migration-lock/oracle';
+
+class MyMigrationRunner implements MigrationRunner {
+  constructor(private readonly db: OracleDriver) {}
+
+  async run(): Promise<void> {
+    await this.db.query('SELECT 1 FROM DUAL');
+  }
+}
 
 const driver = new OracleDriver({
   user: 'system',
@@ -20,6 +28,14 @@ const driver = new OracleDriver({
   connectString: 'localhost/FREEPDB1',
 });
 const lock = new OracleAppLock();
+
+const coordinator = new MigrationCoordinator({
+  driver,
+  lockProvider: lock,
+  migrationRunner: new MyMigrationRunner(driver),
+});
+await coordinator.migrate();
+await driver.close();
 ```
 
 `DBMS_LOCK.REQUEST` is a PL/SQL call. The return code is an OUT bind `{ dir: oracledb.BIND_OUT, type: oracledb.NUMBER }`, the same shape as the [PL/SQL examples](https://node-oracledb.readthedocs.io/en/latest/user_guide/plsql_execution.html). Rows come back as objects (`oracledb.OUT_FORMAT_OBJECT`).

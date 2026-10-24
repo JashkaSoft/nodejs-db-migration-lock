@@ -115,10 +115,11 @@ const dataSource = new DataSource({
 });
 await dataSource.initialize();
 
-// Create a migration runner
-class MyMigrationRunner implements MigrationRunner {
-  async run() {
-    await dataSource.runMigrations({ transaction: 'all' });
+class TypeORMMigrationRunner implements MigrationRunner {
+  constructor(private readonly dataSource: DataSource) {}
+
+  async run(): Promise<void> {
+    await this.dataSource.runMigrations({ transaction: 'all' });
   }
 }
 
@@ -126,7 +127,7 @@ class MyMigrationRunner implements MigrationRunner {
 const coordinator = new MigrationCoordinator({
   driver: new TypeORMDriver(dataSource),
   lockProvider: new PostgresTableLock(),
-  migrationRunner: new MyMigrationRunner(),
+  migrationRunner: new TypeORMMigrationRunner(dataSource),
   onLockWaiting: (attempt, max) => 
     console.log(`Waiting for lock... (${attempt}/${max})`),
 });
@@ -143,10 +144,19 @@ import { NodePgDriver, PostgresAdvisoryLock } from '@nodejs-db-migration-lock/po
 
 const pool = new Pool({ /* config */ });
 
+class PgMigrationRunner implements MigrationRunner {
+  constructor(private readonly pool: Pool) {}
+
+  async run(): Promise<void> {
+    // Run your SQL migrations (e.g. from files or a migration tool)
+    await this.pool.query('SELECT 1');
+  }
+}
+
 const coordinator = new MigrationCoordinator({
   driver: new NodePgDriver(pool),
   lockProvider: new PostgresAdvisoryLock(),
-  migrationRunner: new MyMigrationRunner(),
+  migrationRunner: new PgMigrationRunner(pool),
 });
 
 await coordinator.migrate();
@@ -299,6 +309,7 @@ Advisory strategies need no extra DDL privileges. Table strategies only create t
 An advisory lock stays held for the whole run, including a migration that takes many minutes. Raise `timeoutMs` above that duration so the other replicas wait instead of failing:
 
 ```typescript
+// driver and migrationRunner from Basic Usage (inject the DB client in the runner constructor)
 const coordinator = new MigrationCoordinator({
   driver,
   lockProvider: new PostgresAdvisoryLock(), // or MySQLAdvisoryLock / MssqlAppLock
@@ -312,6 +323,7 @@ const coordinator = new MigrationCoordinator({
 A table lock expires unless it is renewed. For a long run, set `leaseMs` longer than a single slow statement and keep `renewIntervalMs` under half of that lease. Waiters poll `maxRetries * retryIntervalMs`:
 
 ```typescript
+// driver and migrationRunner from Basic Usage (inject the DB client in the runner constructor)
 const coordinator = new MigrationCoordinator({
   driver,
   lockProvider: new PostgresTableLock({ leaseMs: 120_000 }), // MySQLTableLock / SqliteTableLock too

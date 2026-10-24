@@ -12,7 +12,6 @@ npm install tedious
 ## Usage
 
 ```typescript
-import { ConnectionConfig } from 'tedious'; // type is ConnectionConfiguration
 import { MigrationCoordinator, MigrationRunner } from '@nodejs-db-migration-lock/core';
 import { MssqlAppLock, TediousDriver } from '@nodejs-db-migration-lock/mssql';
 
@@ -30,10 +29,21 @@ const driver = new TediousDriver({
   },
 });
 
+class MssqlMigrationRunner implements MigrationRunner {
+  constructor(private readonly db: TediousDriver) {}
+
+  async run(): Promise<void> {
+    await this.db.query(`
+      IF OBJECT_ID('dbo.users', 'U') IS NULL
+      CREATE TABLE dbo.users (id INT IDENTITY(1,1) PRIMARY KEY)
+    `);
+  }
+}
+
 const coordinator = new MigrationCoordinator({
   driver,
   lockProvider: new MssqlAppLock(),
-  migrationRunner: new MyMigrationRunner(),
+  migrationRunner: new MssqlMigrationRunner(driver),
 });
 
 await coordinator.migrate();

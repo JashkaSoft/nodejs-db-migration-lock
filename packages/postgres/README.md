@@ -157,16 +157,17 @@ const pool = new Pool({
 const driver = new NodePgDriver(pool);
 
 class CustomMigrationRunner implements MigrationRunner {
+  constructor(private readonly pool: Pool) {}
+
   async run(): Promise<void> {
-    // Your migration logic here
-    await pool.query('CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY)');
+    await this.pool.query('CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY)');
   }
 }
 
 const coordinator = new MigrationCoordinator({
   driver,
   lockProvider: new PostgresTableLock(),
-  migrationRunner: new CustomMigrationRunner(),
+  migrationRunner: new CustomMigrationRunner(pool),
 });
 
 await coordinator.migrate();

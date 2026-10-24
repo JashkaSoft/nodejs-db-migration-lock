@@ -94,18 +94,21 @@ class MyLockProvider implements LockProvider {
   }
 }
 
-// Implement your migration runner
+// Implement your migration runner (inject dependencies in the constructor)
 class MyMigrationRunner implements MigrationRunner {
+  constructor(private readonly driver: MyDriver) {}
+
   async run(): Promise<void> {
     // Your migration logic
   }
 }
 
 // Coordinate the migration
+const driver = new MyDriver();
 const coordinator = new MigrationCoordinator({
-  driver: new MyDriver(),
+  driver,
   lockProvider: new MyLockProvider(),
-  migrationRunner: new MyMigrationRunner(),
+  migrationRunner: new MyMigrationRunner(driver),
   retryConfig: {
     maxRetries: 60,
     retryIntervalMs: 2000,
