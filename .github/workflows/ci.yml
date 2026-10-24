@@ -96,3 +96,53 @@ jobs:
           node-version: 26
       - name: SQL Server tedious e2e
         run: npm run test:e2e:mssql:tedious
+
+  e2e-cockroach-pg:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: CockroachDB pg e2e
+        run: npm run test:e2e:cockroach:pg
+
+  e2e-yugabyte-pg:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: YugabyteDB pg e2e
+        run: npm run test:e2e:yugabyte:pg
+
+  e2e-oracle-oracledb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: Oracle DBMS_LOCK e2e
+        run: npm run test:e2e:oracle:oracledb
+
+  e2e-mikroorm-postgres:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: MikroORM postgres e2e
+        run: npm run test:e2e:mikroorm:postgres
+
+  e2e-kysely-postgres:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: Kysely postgres e2e
+        run: npm run test:e2e:kysely:postgres
