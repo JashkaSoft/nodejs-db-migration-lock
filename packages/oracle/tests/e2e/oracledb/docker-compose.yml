@@ -1,0 +1,62 @@
+version: '3.8'
+
+x-migrator: &migrator
+  image: nodejs-db-migration-lock-e2e-oracle-oracledb:local
+  build:
+    context: ../../../../../
+    dockerfile: packages/oracle/tests/e2e/Dockerfile
+    args:
+      E2E_SUITE: oracledb
+  environment: &db
+    ORACLE_HOST: oracle
+    ORACLE_PORT: "1521"
+    ORACLE_SERVICE: FREEPDB1
+    ORACLE_USER: system
+    ORACLE_PASSWORD: Migration_Lock_1
+    PROCESS_ID: "1"
+  depends_on:
+    oracle:
+      condition: service_healthy
+  networks:
+    - migration-net
+  command: ["node", "dist/migrate.js"]
+
+services:
+  oracle:
+    image: docker.io/gvenzl/oracle-free:23-slim
+    environment:
+      ORACLE_PASSWORD: Migration_Lock_1
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 10s
+      retries: 40
+      start_period: 90s
+    networks:
+      - migration-net
+
+  migrator-1:
+    <<: *migrator
+
+  migrator-2:
+    <<: *migrator
+    environment:
+      <<: *db
+      PROCESS_ID: "2"
+
+  migrator-3:
+    <<: *migrator
+    environment:
+      <<: *db
+      PROCESS_ID: "3"
+
+  test-runner:
+    <<: *migrator
+    environment:
+      <<: *db
+      EXPECTED_PROCESSES: "3"
+    command: ["node", "dist/verify.js"]
+
+networks:
+  migration-net:
+    driver: bridge

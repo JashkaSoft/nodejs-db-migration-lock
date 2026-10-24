@@ -1,0 +1,14 @@
+{
+  "name": "e2e-oracle-oracledb",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "@nodejs-db-migration-lock/core": "file:../../../../core",
+    "@nodejs-db-migration-lock/oracle": "file:../../../../oracle",
+    "oracledb": "^6.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
