@@ -16,13 +16,31 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Compute CI plan from changed paths
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: .github/ci-path-filters.yml
+      - name: Compute CI plan from path filters
         id: plan
         env:
           E2E_NODE_VERSION: "26"
-        run: |
-          git fetch origin "${{ github.base_ref }}"
-          bash .github/scripts/compute-ci-plan.sh "origin/${{ github.base_ref }}"
+          FILTER_CODE: ${{ steps.filter.outputs.code }}
+          FILTER_DOCS: ${{ steps.filter.outputs.docs }}
+          FILTER_GLOBAL: ${{ steps.filter.outputs.global }}
+          FILTER_CORE: ${{ steps.filter.outputs.core }}
+          FILTER_POSTGRES: ${{ steps.filter.outputs.postgres }}
+          FILTER_MYSQL: ${{ steps.filter.outputs.mysql }}
+          FILTER_MSSQL: ${{ steps.filter.outputs.mssql }}
+          FILTER_COCKROACH: ${{ steps.filter.outputs.cockroach }}
+          FILTER_YUGABYTE: ${{ steps.filter.outputs.yugabyte }}
+          FILTER_ORACLE: ${{ steps.filter.outputs.oracle }}
+          FILTER_SQLITE: ${{ steps.filter.outputs.sqlite }}
+          FILTER_TYPEORM: ${{ steps.filter.outputs.typeorm }}
+          FILTER_SEQUELIZE: ${{ steps.filter.outputs.sequelize }}
+          FILTER_MIKROORM: ${{ steps.filter.outputs.mikroorm }}
+          FILTER_KYSELY: ${{ steps.filter.outputs.kysely }}
+          FILTER_KNEX: ${{ steps.filter.outputs.knex }}
+        run: bash .github/scripts/compute-ci-plan.sh
 
   test:
     needs: changes
@@ -41,8 +59,7 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  # node × database image. Matrix rows come from .github/e2e-targets.json and
-  # .github/scripts/compute-ci-plan.sh (only packages touched by the PR).
+  # E2e rows: .github/e2e-targets.json + paths-filter + build-e2e-matrix.js
   e2e:
     needs: changes
     if: needs.changes.outputs.run_e2e == 'true'
