@@ -78,7 +78,7 @@ export class MockLockProvider implements LockProvider {
   public shouldFailInfrastructure = false;
   public shouldFailRelease = false;
 
-  async ensureInfrastructure(driver: SqlDriver): Promise<void> {
+  async ensureInfrastructure(_driver: SqlDriver): Promise<void> {
     this.infrastructureCalls++;
     if (this.shouldFailInfrastructure) {
       throw new Error('Infrastructure setup failed');
@@ -111,14 +111,14 @@ export class MockLockProvider implements LockProvider {
     return this.shouldAcquireSucceed;
   }
 
-  async release(driver: SqlDriver): Promise<void> {
+  async release(_driver: SqlDriver): Promise<void> {
     this.releaseCalls++;
     if (this.shouldFailRelease) {
       throw new Error('Release failed');
     }
   }
 
-  async healthcheck(driver: SqlDriver): Promise<boolean> {
+  async healthcheck(_driver: SqlDriver): Promise<boolean> {
     this.healthcheckCalls++;
     return true;
   }

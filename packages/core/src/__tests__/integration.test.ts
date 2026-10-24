@@ -43,7 +43,7 @@ class InMemoryDatabase {
 class TestSqlDriver implements SqlDriver {
   constructor(private db: InMemoryDatabase) {}
 
-  async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
+  async query<T = unknown>(sql: string, _params?: unknown[]): Promise<T[]> {
     // Simulate table existence check
     if (sql.includes('information_schema.tables')) {
       return [{ exists: this.db.has('table:migration_lock') }] as T[];
@@ -289,7 +289,7 @@ describe('Integration Tests', () => {
       class RetryableLockProvider implements LockProvider {
         name = 'retryable-lock';
 
-        async acquire(driver: SqlDriver): Promise<boolean> {
+        async acquire(_driver: SqlDriver): Promise<boolean> {
           attemptCount++;
           if (attemptCount < 3) {
             return false; // Fail first 2 attempts
@@ -297,7 +297,7 @@ describe('Integration Tests', () => {
           return true; // Succeed on 3rd attempt
         }
 
-        async release(driver: SqlDriver): Promise<void> {}
+        async release(_driver: SqlDriver): Promise<void> {}
       }
 
       const driver = new TestSqlDriver(db);

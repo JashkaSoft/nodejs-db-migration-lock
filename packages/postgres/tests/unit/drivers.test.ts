@@ -53,10 +53,6 @@ describe('NodePgDriver', () => {
         });
 
         expect(result).toBe(42);
-        
-        // Should have BEGIN, COMMIT
-        const queries = pool.queries.map(q => q.sql);
-        // Note: The mock doesn't actually track BEGIN/COMMIT from client
       });
 
       it('should handle transaction errors and rollback', async () => {

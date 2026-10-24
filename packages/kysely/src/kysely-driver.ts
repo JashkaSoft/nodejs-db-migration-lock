@@ -26,7 +26,7 @@ export class KyselyDriver implements SqlDriver {
   private connecting: Promise<Hold> | null = null;
 
   constructor(
-    private readonly db: Kysely<any>,
+    private readonly db: Kysely<Record<string, never>>,
     private readonly ownsKysely = true,
     hold?: Hold,
   ) {
@@ -112,7 +112,11 @@ export class KyselyDriver implements SqlDriver {
         }
       }).catch((error: unknown) => {
         settled();
-        reject(error);
+        reject(
+          error instanceof Error
+            ? error
+            : new Error(typeof error === 'string' ? error : JSON.stringify(error)),
+        );
       });
     });
     return ready.then((hold) => {

@@ -34,7 +34,11 @@ function bindParameter(request: Request, index: number, value: unknown): void {
     request.addParameter(name, TYPES.NVarChar, null);
     return;
   }
-  request.addParameter(name, TYPES.NVarChar, String(value));
+  if (typeof value === 'string') {
+    request.addParameter(name, TYPES.NVarChar, value);
+    return;
+  }
+  request.addParameter(name, TYPES.NVarChar, JSON.stringify(value));
 }
 
 export function executeRequest(

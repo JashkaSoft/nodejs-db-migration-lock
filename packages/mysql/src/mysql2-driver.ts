@@ -1,5 +1,4 @@
 import { SqlDriver } from '@nodejs-db-migration-lock/core';
-import type { QueryValues } from 'mysql2';
 import type { Pool, PoolConnection, Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 type MysqlConnection = Pool | PoolConnection | Connection;
@@ -12,7 +11,7 @@ function isMysqlPool(client: MysqlConnection): client is Pool {
 }
 
 function toRows<T>(result: unknown): T[] {
-  const payload = Array.isArray(result) ? result[0] : result;
+  const payload: unknown = Array.isArray(result) ? result[0] : result;
 
   if (Array.isArray(payload)) {
     return payload as T[];
@@ -52,7 +51,7 @@ export class Mysql2Driver implements SqlDriver {
 
   async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     const connection = await this.getConnection();
-    const result = await connection.query(sql, params as QueryValues | undefined);
+    const result = await connection.query(sql, params);
     return toRows<T>(result);
   }
 

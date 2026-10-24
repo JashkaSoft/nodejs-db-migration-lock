@@ -33,7 +33,7 @@ function asRows<T>(result: unknown): T[] {
     return [];
   }
   if (Array.isArray(result)) {
-    const first = result[0];
+    const first: unknown = result[0];
     if (Array.isArray(first)) {
       return first as T[];
     }

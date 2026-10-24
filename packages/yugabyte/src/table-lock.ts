@@ -32,7 +32,12 @@ function isDuplicateRelationError(error: unknown): boolean {
   if (code === '42P07' || code === '42710') {
     return true;
   }
-  const message = error instanceof Error ? error.message : String(error);
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : JSON.stringify(error);
   return /already exists/i.test(message);
 }
 
