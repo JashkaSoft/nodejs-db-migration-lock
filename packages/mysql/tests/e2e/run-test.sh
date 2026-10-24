@@ -3,6 +3,9 @@ set -euo pipefail
 
 SUITE="${1:-mysql2}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
+# shellcheck disable=SC1091
+source "${REPO_ROOT}/scripts/e2e-matrix.sh"
 SUITE_DIR="${SCRIPT_DIR}/${SUITE}"
 
 if [ ! -f "${SUITE_DIR}/docker-compose.yml" ]; then
@@ -53,6 +56,11 @@ EOF
   project_name="${project_name}-${image_slug}"
 fi
 
+e2e_matrix_begin
+if [ "$NODE_VERSION" != "26" ]; then
+  project_name="${project_name}-node${NODE_VERSION}"
+fi
+
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$project_name}"
 
 cleanup() {
@@ -63,7 +71,7 @@ remove_override() {
     rm -f "$IMAGE_OVERRIDE"
   fi
 }
-trap 'cleanup; remove_override' EXIT
+trap 'cleanup; remove_override; e2e_matrix_remove_override' EXIT
 
 cleanup
 set +e

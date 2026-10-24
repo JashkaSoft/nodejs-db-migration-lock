@@ -1,4 +1,5 @@
-FROM docker.io/library/node:26-alpine
+ARG NODE_VERSION=26
+FROM docker.io/library/node:${NODE_VERSION}-alpine
 
 ARG E2E_SUITE=postgres
 
