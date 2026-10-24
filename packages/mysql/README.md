@@ -2,7 +2,7 @@
 
 MySQL/MariaDB adapter with `GET_LOCK()` advisory locks and table-based locks.
 
-Pull-request end-to-end tests use MySQL 9.7. MySQL 8.4 and MariaDB 11.8 run the same mysql2 suite on `main` and weekly (`MYSQL_IMAGE`).
+Pull-request end-to-end tests run the mysql2 suite on Node 26 against MySQL 9.7, MySQL 8.4, MariaDB 11.8, and MariaDB 10.11 (`MYSQL_IMAGE`).
 
 ## Installation
 

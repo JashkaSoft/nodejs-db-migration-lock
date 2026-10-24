@@ -315,7 +315,7 @@ await lock.forceRelease(driver);
 
 ## 🛠️ Development
 
-Requires **Node.js 26** (CI and Docker) or at least **24.15**.
+Requires **Node.js 24.15** or newer. CI runs unit tests on Node 24, 25, and 26. End-to-end runs on Node 26, and each dialect suite runs on the current server image and the previous major. `NODE_VERSION` selects the suite image (`24` or `26`, default `26`).
 
 ```bash
 # Install dependencies
@@ -342,10 +342,17 @@ npm run test:e2e:yugabyte:pg
 npm run test:e2e:mikroorm:postgres
 npm run test:e2e:kysely:postgres
 
-# Same mysql2 suite against the LTS servers people still run.
-# Pull requests stay on MySQL 9.7. These two run on main and weekly.
+# Node 24 image. Pull-request end-to-end stays on Node 26; this runs the suite image locally.
+NODE_VERSION=24 npm run test:e2e:postgres:node-pg
+
+# Previous database major. Pull requests run these beside the current image.
+POSTGRES_IMAGE=docker.io/library/postgres:17-alpine npm run test:e2e:postgres:node-pg
 MYSQL_IMAGE=docker.io/library/mysql:8.4 npm run test:e2e:mysql:mysql2
 MYSQL_IMAGE=docker.io/library/mariadb:11.8 npm run test:e2e:mysql:mysql2
+MYSQL_IMAGE=docker.io/library/mariadb:10.11 npm run test:e2e:mysql:mysql2
+MSSQL_IMAGE=mcr.microsoft.com/mssql/server:2019-latest npm run test:e2e:mssql:tedious
+COCKROACH_IMAGE=docker.io/cockroachdb/cockroach:v24.3.37 npm run test:e2e:cockroach:pg
+YUGABYTE_IMAGE=docker.io/yugabytedb/yugabyte:2025.2.8.0-b60 npm run test:e2e:yugabyte:pg
 ```
 
 Multi-replica apps live in [`examples/`](./examples) (NestJS/Express/Fastify + TypeORM, NestJS + Sequelize, NestJS + Knex, NestJS + SQLite, NestJS and Express + SQL Server, NestJS + Prisma) against Postgres, MySQL, SQLite, and SQL Server.
