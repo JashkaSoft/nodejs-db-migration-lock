@@ -4,7 +4,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ## 🌟 Ways to Contribute
 
-- **Add support for new databases** (MySQL, SQLite, MSSQL, Oracle, etc.)
+- **Add support for another database** or lock strategy
 - **Implement new lock strategies** for existing databases
 - **Improve documentation** and add examples
 - **Report bugs** and suggest features
@@ -31,7 +31,12 @@ nodejs-db-migration-lock/
 │   ├── sequelize/         # Sequelize adapter (DB-agnostic)
 │   ├── knex/              # Knex adapter (DB-agnostic)
 │   ├── sqlite/            # SQLite table lock + NodeSqliteDriver
-│   └── mssql/             # SQL Server sp_getapplock + TediousDriver
+│   ├── mssql/             # SQL Server sp_getapplock + TediousDriver
+│   ├── oracle/            # Oracle DBMS_LOCK + OracleDriver
+│   ├── cockroach/         # CockroachDB table lease + CockroachDriver
+│   ├── yugabyte/          # YugabyteDB table lease + YugabyteDriver
+│   ├── mikroorm/          # MikroORM adapter (DB-agnostic)
+│   └── kysely/            # Kysely adapter (DB-agnostic)
 │
 ├── examples/              # Usage examples
 └── README.md

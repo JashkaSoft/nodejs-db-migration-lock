@@ -40,3 +40,21 @@ const coordinator = new MigrationCoordinator({
 });
 await coordinator.migrate();
 ```
+
+## Release the lock by hand
+
+`MySQLAdvisoryLock` has no `forceRelease`. On the session that acquired it, the default name is `nodejs_db_migration_lock:<database>`:
+
+```sql
+SELECT RELEASE_LOCK('nodejs_db_migration_lock:<database>');
+```
+
+`GET_LOCK` is server-wide and limited to 64 bytes. If this process is gone but the session is still up, `KILL` that connection.
+
+`MySQLTableLock` uses `forceRelease(driver)`:
+
+```sql
+DELETE FROM migration_lock WHERE id = 1;
+```
+
+`release(driver)` also matches `holder`. The next waiter takes the row after `expires_at`.

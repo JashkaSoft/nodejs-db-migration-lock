@@ -230,6 +230,26 @@ class NodePgDriver implements SqlDriver {
 
 When constructed with a `Pool`, the driver checks out one client and reuses it for every query until `close()`. A `PostgresTableLock` heartbeat checks out a second client only after this process acquires the lock, and releases it when `migrate()` finishes. Advisory locks and `PostgresTableLock` infrastructure setup are session-scoped and will not work correctly if each query uses a different pool connection.
 
+PgBouncer in transaction mode gives the next statement a different backend, so `pg_advisory_lock` does not stay held. Use `PostgresTableLock` behind transaction pooling. Session pooling keeps the backend and works with `PostgresAdvisoryLock`.
+
+## Release the lock by hand
+
+`PostgresAdvisoryLock` has no `forceRelease`. On the session that acquired it:
+
+```sql
+SELECT pg_advisory_unlock(<key>);
+```
+
+A hung backend is visible in `pg_locks` (`locktype = 'advisory'`). `SELECT pg_terminate_backend(pid)` drops that session and the lock. `scope: 'transaction'` ends at `COMMIT` or `ROLLBACK`.
+
+`PostgresTableLock` keeps a row until it expires or someone deletes it. `forceRelease(driver)` runs:
+
+```sql
+DELETE FROM migration_lock WHERE id = 1;
+```
+
+`release(driver)` adds `AND holder = $1`. The next waiter also takes the row after `expires_at`.
+
 ## Complete Example
 
 See the [examples directory](../../examples) for complete working examples.

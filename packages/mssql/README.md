@@ -44,6 +44,18 @@ await driver.close();
 
 `sp_getapplock` waits inside SQL Server for the coordinator timeout. It does not create a table. The login needs permission to take an application lock in the current database (`public` is the default principal).
 
+## Release the lock by hand
+
+There is no `forceRelease`. On the session that acquired the lock:
+
+```sql
+EXEC sp_releaseapplock
+  @Resource = 'nodejs_db_migration_lock:<database>',
+  @LockOwner = 'Session';
+```
+
+A hung session has to be killed. `scope: 'transaction'` ends at `COMMIT` or `ROLLBACK` (`@LockOwner = 'Transaction'`).
+
 ## License
 
 MIT
