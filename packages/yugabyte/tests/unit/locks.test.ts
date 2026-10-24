@@ -6,6 +6,8 @@ class MockDriver implements SqlDriver {
   rows: unknown[] = [{ id: '1' }];
   tableExists = false;
   createTableError: Error | null = null;
+  ifNotExistsError: Error | null = null;
+  schemaCheckErrorsBeforeSuccess = 0;
 
   async query<T>(sql: string, params?: unknown[]): Promise<T[]> {
     this.queries.push({ sql, params });
@@ -13,6 +15,10 @@ class MockDriver implements SqlDriver {
       return [{ ok: 1 }] as T[];
     }
     if (/information_schema\.tables/i.test(sql)) {
+      if (this.schemaCheckErrorsBeforeSuccess > 0) {
+        this.schemaCheckErrorsBeforeSuccess -= 1;
+        throw Object.assign(new Error('Restart read required'), { code: '40001' });
+      }
       return [{ exists: this.tableExists }] as T[];
     }
     if (
@@ -21,6 +27,9 @@ class MockDriver implements SqlDriver {
       this.createTableError
     ) {
       throw this.createTableError;
+    }
+    if (/create table if not exists/i.test(sql) && this.ifNotExistsError) {
+      throw this.ifNotExistsError;
     }
     if (/^create table/i.test(sql.trim())) {
       this.tableExists = true;
@@ -41,6 +50,23 @@ describe('YugabyteTableLock', () => {
     expect(sql).toContain('CREATE TABLE "migration_lock"');
     expect(sql).toContain('CREATE TABLE IF NOT EXISTS "migration_lock"');
     expect(sql).not.toContain('pg_advisory_lock');
+  });
+
+  it('retries transient Yugabyte serialization errors during schema checks', async () => {
+    const driver = new MockDriver();
+    driver.schemaCheckErrorsBeforeSuccess = 2;
+    await expect(new YugabyteTableLock().ensureInfrastructure(driver)).resolves.toBeUndefined();
+    expect(
+      driver.queries.filter((q) => /information_schema\.tables/i.test(q.sql)).length,
+    ).toBeGreaterThanOrEqual(3);
+  });
+
+  it('tolerates duplicate DDL on CREATE TABLE IF NOT EXISTS', async () => {
+    const driver = new MockDriver();
+    driver.ifNotExistsError = Object.assign(new Error('type "migration_lock" already exists'), {
+      code: '42710',
+    });
+    await expect(new YugabyteTableLock().ensureInfrastructure(driver)).resolves.toBeUndefined();
   });
 
   it('tolerates duplicate DDL when another migrator creates the table first', async () => {

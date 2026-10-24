@@ -139,6 +139,15 @@ describe('SequelizeDriver', () => {
     ).resolves.toEqual([{ exists: true }]);
   });
 
+  it('returns empty rows for postgres selects with no matches', async () => {
+    sequelize.dialect = 'postgres';
+    sequelize.nextResult = [[], { command: 'SELECT', rowCount: 0 }];
+    const driver = new SequelizeDriver(sequelize as unknown as Sequelize);
+    await expect(driver.query('SELECT id FROM migration_lock WHERE id = $1', [1])).resolves.toEqual(
+      [],
+    );
+  });
+
   it('propagates query errors', async () => {
     sequelize.shouldFail = true;
     const driver = new SequelizeDriver(sequelize as unknown as Sequelize);

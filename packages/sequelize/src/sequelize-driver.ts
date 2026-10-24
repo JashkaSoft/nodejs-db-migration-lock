@@ -26,7 +26,8 @@ function normalizeSequelizeQueryResult<T>(raw: unknown): T[] {
   }
 
   if (raw.length === 2) {
-    const [left, right] = raw;
+    const left: unknown = raw[0];
+    const right: unknown = raw[1];
     // Postgres raw queries: [rows, queryResult]; MySQL may use [[], metadata]
     if (Array.isArray(left) && left.length > 0) {
       return left as T[];
@@ -49,13 +50,23 @@ function normalizeSequelizeQueryResult<T>(raw: unknown): T[] {
     if (typeof right === 'number') {
       return [{ affectedRows: right } as T];
     }
+    if (
+      Array.isArray(left) &&
+      left.length === 0 &&
+      right &&
+      typeof right === 'object' &&
+      !Array.isArray(right) &&
+      !isOkPacket(right)
+    ) {
+      return [] as T[];
+    }
     if (right && typeof right === 'object' && !Array.isArray(right)) {
       return [right as T];
     }
   }
 
   if (raw.length > 0) {
-    const first = raw[0];
+    const first: unknown = raw[0];
     if (Array.isArray(first)) {
       return first as T[];
     }
@@ -79,7 +90,7 @@ function normalizeSequelizeQueryResult<T>(raw: unknown): T[] {
  */
 export class SequelizeDriver implements SqlDriver {
   private activeTransaction: Transaction | null = null;
-  private pinned: unknown | undefined;
+  private pinned?: unknown;
   private readonly ownsSequelize: boolean;
 
   /**
@@ -122,7 +133,7 @@ export class SequelizeDriver implements SqlDriver {
       }
     }
 
-    const raw = await this.sequelize.query(sql, options);
+    const raw: unknown = await this.sequelize.query(sql, options);
     return normalizeSequelizeQueryResult<T>(raw);
   }
 
@@ -171,7 +182,7 @@ export class SequelizeDriver implements SqlDriver {
     return manager;
   }
 
-  private async getPinned(): Promise<unknown | undefined> {
+  private async getPinned(): Promise<unknown> {
     if (this.pinned) {
       return this.pinned;
     }

@@ -1,4 +1,4 @@
-import { OracleDriver, OracleConnection } from '../../src/driver';
+import { OracleDriver } from '../../src/driver';
 
 describe('OracleDriver', () => {
   it('sends an OUT bind and reads it back as acquired', async () => {
@@ -14,7 +14,7 @@ describe('OracleDriver', () => {
       async rollback() { return undefined; },
       async close() { this.closed = true; },
     };
-    const driver = new OracleDriver(connection as OracleConnection);
+    const driver = new OracleDriver(connection);
     await expect(driver.query('BEGIN :p3 := 0; END;', [1, 0, { out: true }])).resolves.toEqual([{ acquired: 0 }]);
     await driver.close();
     expect(connection.closed).toBe(true);

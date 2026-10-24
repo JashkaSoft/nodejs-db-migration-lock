@@ -50,7 +50,12 @@ async function main(): Promise<void> {
     WHERE table_schema = DATABASE() AND table_name IN ('users', 'posts')
   `),
   );
-  const names = tables.map((t) => String(t.name || t.TABLE_NAME || '').toLowerCase());
+  const names = tables.map((t) => {
+    const row = t;
+    const name = row.name ?? row.TABLE_NAME;
+    const text = typeof name === 'string' ? name : name == null ? '' : JSON.stringify(name);
+    return text.toLowerCase();
+  });
   add('tables', names.includes('users') && names.includes('posts'), names.join(','));
 
   const users = asRows(await pool.query('SELECT * FROM users ORDER BY created_at'));

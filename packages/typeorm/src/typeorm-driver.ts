@@ -39,7 +39,7 @@ export class TypeORMDriver implements SqlDriver {
 
   async query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]> {
     const runner = await this.getRunner();
-    const result = runner
+    const result: unknown = runner
       ? await runner.query(sql, params)
       : await this.dataSource.query(sql, params);
     return asRows<T>(result);

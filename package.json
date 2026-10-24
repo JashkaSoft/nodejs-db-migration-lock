@@ -36,16 +36,25 @@
     "test:e2e:mikroorm:postgres": "lerna run test:e2e:postgres --scope=@nodejs-db-migration-lock/mikroorm --stream",
     "test:e2e:kysely": "lerna run test:e2e --scope=@nodejs-db-migration-lock/kysely --stream",
     "test:e2e:kysely:postgres": "lerna run test:e2e:postgres --scope=@nodejs-db-migration-lock/kysely --stream",
-    "lint": "lerna run lint",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "version": "lerna version",
     "publish": "lerna publish",
-    "publish:ci": "lerna publish from-package --yes"
+    "publish:ci": "lerna publish from-package --yes",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
+    "@eslint/js": "10.0.1",
     "@types/node": "^26.6.5",
     "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "10.13.0",
+    "husky": "9.1.7",
     "lerna": "^10.1.1",
-    "typescript": "npm:@typescript/typescript6@^6.0.2"
+    "lint-staged": "17.6.0",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "8.72.0"
   },
   "engines": {
     "node": ">=24.15.0",
@@ -53,5 +62,8 @@
   },
   "overrides": {
     "undici": "^8.12.3"
+  },
+  "lint-staged": {
+    "packages/**/*.ts": "eslint --fix --max-warnings=0"
   }
 }

@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "commonjs",
+    "lib": ["ES2024"],
+    "noEmit": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@nodejs-db-migration-lock/*": ["packages/*/src/index.ts"]
+    },
+    "types": ["node", "jest"]
+  },
+  "include": [
+    "packages/**/src/**/*.ts",
+    "packages/**/tests/**/*.ts"
+  ],
+  "exclude": ["node_modules", "**/dist/**"]
+}

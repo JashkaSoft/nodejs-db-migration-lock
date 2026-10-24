@@ -23,7 +23,7 @@ function unwrapKnexResult<T>(result: unknown): T[] {
     return (result as { rows: T[] }).rows;
   }
   if (Array.isArray(result)) {
-    const first = result[0];
+    const first: unknown = result[0];
     if (Array.isArray(first)) {
       return first as T[];
     }
@@ -44,7 +44,7 @@ function unwrapKnexResult<T>(result: unknown): T[] {
  * connection for the driver lifetime.
  */
 export class KnexDriver implements SqlDriver {
-  private session: unknown | undefined;
+  private session?: unknown;
   private readonly ownsKnex: boolean;
 
   /**
@@ -120,14 +120,18 @@ export class KnexDriver implements SqlDriver {
   }
 
   private client(): KnexClient | undefined {
-    const client = (this.knex as Knex & { client?: KnexClient }).client;
-    if (!client || typeof client.acquireConnection !== 'function') {
+    const candidate: unknown = (this.knex as Knex & { client?: unknown }).client;
+    if (
+      !candidate ||
+      typeof candidate !== 'object' ||
+      typeof (candidate as KnexClient).acquireConnection !== 'function'
+    ) {
       return undefined;
     }
-    return client;
+    return candidate as KnexClient;
   }
 
-  private async getSession(): Promise<unknown | undefined> {
+  private async getSession(): Promise<unknown> {
     if (this.session) {
       return this.session;
     }

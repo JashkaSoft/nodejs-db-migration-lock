@@ -4,6 +4,13 @@ export interface AcquireOptions {
   timeoutMs?: number;
 }
 
+function isAbortSignal(value: AbortSignal | AcquireOptions): value is AbortSignal {
+  return (
+    typeof (value as AbortSignal).addEventListener === 'function' &&
+    'aborted' in value
+  );
+}
+
 export function normalizeAcquireOptions(
   options?: AbortSignal | AcquireOptions,
 ): AcquireOptions {
@@ -11,12 +18,9 @@ export function normalizeAcquireOptions(
     return {};
   }
 
-  if (
-    typeof (options as AbortSignal).addEventListener === 'function' &&
-    'aborted' in options
-  ) {
-    return { signal: options as AbortSignal };
+  if (isAbortSignal(options)) {
+    return { signal: options };
   }
 
-  return options as AcquireOptions;
+  return options;
 }
