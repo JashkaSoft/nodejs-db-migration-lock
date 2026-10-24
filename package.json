@@ -36,16 +36,20 @@
     "test:e2e:mikroorm:postgres": "lerna run test:e2e:postgres --scope=@nodejs-db-migration-lock/mikroorm --stream",
     "test:e2e:kysely": "lerna run test:e2e --scope=@nodejs-db-migration-lock/kysely --stream",
     "test:e2e:kysely:postgres": "lerna run test:e2e:postgres --scope=@nodejs-db-migration-lock/kysely --stream",
-    "lint": "lerna run lint",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "version": "lerna version",
     "publish": "lerna publish",
     "publish:ci": "lerna publish from-package --yes"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@types/node": "^26.6.5",
     "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "10.13.0",
     "lerna": "^10.1.1",
-    "typescript": "npm:@typescript/typescript6@^6.0.2"
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "8.72.0"
   },
   "engines": {
     "node": ">=24.15.0",
