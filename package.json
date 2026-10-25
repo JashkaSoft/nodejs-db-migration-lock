@@ -44,6 +44,8 @@
     "publish:ci": "lerna publish from-package --yes",
     "publish:git": "lerna publish from-git --yes --no-git-reset",
     "stage:git": "node scripts/stage-from-git.mjs",
+    "build:release": "node scripts/lerna-for-release.mjs build",
+    "test:release": "node scripts/lerna-for-release.mjs test",
     "prepare": "husky"
   },
   "devDependencies": {

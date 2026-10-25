@@ -435,7 +435,7 @@ npm run version
 git push origin main --follow-tags
 ```
 
-Pushing tags triggers **Stage release** (`.github/workflows/publish.yml`). CI runs `npm run stage:git`, which calls **`npm stage publish`** for each package tagged at that commit (not a live registry release).
+Pushing **one package tag** triggers **Stage release** (`.github/workflows/publish.yml`). CI stages **only that tag** (`GITHUB_REF_NAME`), runs **`build:release`** / **`test:release`** for that package (plus build deps), then **`npm stage publish`**. Versions already on npm are skipped. To retry or stage after a bulk tag push, use **Actions → Stage release → Run workflow** and paste the tag. Bulk `git push` of many tags at once may not start a run—push tags one at a time or use workflow dispatch.
 
 **Promote to npm (maintainer, 2FA):**
 

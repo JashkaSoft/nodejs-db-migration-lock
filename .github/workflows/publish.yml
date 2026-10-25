@@ -4,22 +4,31 @@ on:
   push:
     tags:
       - '@nodejs-db-migration-lock/*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g. @nodejs-db-migration-lock/postgres@0.1.0)'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 # One release commit often gets several package tags; dedupe staging on the same SHA.
 concurrency:
-  group: stage-release-${{ github.sha }}
+  group: stage-release-${{ github.sha }}-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   stage:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.ref }}
 
       - uses: actions/setup-node@v7
         with:
@@ -31,8 +40,10 @@ jobs:
         run: npm install -g npm@^11.15.0
 
       - run: npm ci
-      - run: npm run build
-      - run: npm test
+      - name: Build release package (and workspace dependencies)
+        run: npm run build:release
+      - name: Test release package
+        run: npm run test:release
 
       - name: Stage tagged packages on npm (maintainer approves with 2FA)
         run: npm run stage:git

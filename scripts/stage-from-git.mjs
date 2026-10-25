@@ -1,33 +1,12 @@
 #!/usr/bin/env node
 /**
- * Stage tagged packages at HEAD for npm review (stage-only tokens).
+ * Stage tagged packages for npm review (stage-only tokens).
  * Tag format: @nodejs-db-migration-lock/<pkg>@<semver>
  */
 import { execFileSync, execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-
-const SCOPE_PREFIX = '@nodejs-db-migration-lock/';
-
-function run(cmd, args, opts = {}) {
-  execFileSync(cmd, args, { stdio: 'inherit', ...opts });
-}
-
-function parseReleaseTag(tag) {
-  if (!tag.startsWith(SCOPE_PREFIX)) {
-    return null;
-  }
-  const at = tag.lastIndexOf('@');
-  if (at <= 0) {
-    return null;
-  }
-  const name = tag.slice(0, at);
-  const version = tag.slice(at + 1);
-  if (!name.startsWith(SCOPE_PREFIX) || !version) {
-    return null;
-  }
-  return { name, version };
-}
+import { releaseTagsForRun } from './release-tags-at-head.mjs';
 
 function npmSupportsStage() {
   try {
@@ -45,12 +24,17 @@ function loadLernaPackages() {
   return JSON.parse(json);
 }
 
-function tagsAtHead() {
-  const out = execSync('git tag --points-at HEAD', { encoding: 'utf8' }).trim();
-  if (!out) {
-    return [];
+function isPublishedOnNpm(name, version) {
+  try {
+    const out = execFileSync(
+      'npm',
+      ['view', `${name}@${version}`, 'version'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+    ).trim();
+    return out === version;
+  } catch {
+    return false;
   }
-  return out.split('\n').filter(Boolean);
 }
 
 if (!npmSupportsStage()) {
@@ -60,12 +44,16 @@ if (!npmSupportsStage()) {
   process.exit(1);
 }
 
-const tags = tagsAtHead()
-  .map(parseReleaseTag)
-  .filter(Boolean);
+let tags;
+try {
+  tags = releaseTagsForRun();
+} catch (err) {
+  console.error(err.message);
+  process.exit(1);
+}
 
 if (tags.length === 0) {
-  console.log('No @nodejs-db-migration-lock/* release tags at HEAD; nothing to stage.');
+  console.log('No release tags selected for this run; nothing to stage.');
   process.exit(0);
 }
 
@@ -74,10 +62,12 @@ const byName = new Map(
 );
 
 const staged = [];
-for (const { name, version } of tags) {
+const skipped = [];
+
+for (const { name, version, tag } of tags) {
   const location = byName.get(name);
   if (!location) {
-    console.error(`No workspace package for tag ${name}@${version}`);
+    console.error(`No workspace package for tag ${tag}`);
     process.exit(1);
   }
 
@@ -91,9 +81,41 @@ for (const { name, version } of tags) {
     process.exit(1);
   }
 
-  console.log(`Staging ${name}@${version} from ${location}`);
-  run('npm', ['stage', 'publish'], { cwd: location });
-  staged.push(`${name}@${version}`);
+  if (isPublishedOnNpm(name, version)) {
+    console.log(`Skip ${tag} (already published on npm).`);
+    skipped.push(tag);
+    continue;
+  }
+
+  console.log(`Staging ${tag} from ${location}`);
+  try {
+    execFileSync('npm', ['stage', 'publish'], {
+      cwd: location,
+      stdio: ['inherit', 'pipe', 'pipe'],
+      encoding: 'utf8',
+    });
+    staged.push(tag);
+  } catch (err) {
+    const msg = `${err.stdout ?? ''}${err.stderr ?? ''}${err.message ?? ''}`;
+    if (msg.includes('E409') || msg.includes('previously published')) {
+      console.log(`Skip ${tag} (already on npm registry).`);
+      skipped.push(tag);
+      continue;
+    }
+    if (err.stdout) process.stdout.write(err.stdout);
+    if (err.stderr) process.stderr.write(err.stderr);
+    process.exit(err.status ?? 1);
+  }
+}
+
+if (staged.length === 0 && skipped.length > 0) {
+  console.log('\nNothing new to stage (all selected versions already on npm).');
+  process.exit(0);
+}
+
+if (staged.length === 0) {
+  console.log('\nNo packages staged.');
+  process.exit(0);
 }
 
 console.log('\nStaged for review (not live on npm until approved):');
