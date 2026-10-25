@@ -279,6 +279,10 @@ When reporting bugs, please include:
 - Update documentation
 - Keep PRs focused (one feature/fix per PR)
 
+## 📦 Releases
+
+Maintainers cut npm releases with Lerna independent versioning. CI **stages** tagged packages (`npm stage publish`); a maintainer **approves** them on npm with 2FA. See [Publishing to npm](./README.md#publishing-to-npm) for `NPM_TOKEN` (stage-only), the **Version** and **Stage release** workflows, and `npm stage approve`.
+
 ## 📜 License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.

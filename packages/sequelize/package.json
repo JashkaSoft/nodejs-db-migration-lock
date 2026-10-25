@@ -28,7 +28,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/nodejs-db-migration-lock.git",
+    "url": "https://github.com/JashkaSoft/nodejs-db-migration-lock.git",
     "directory": "packages/sequelize"
   },
   "publishConfig": {

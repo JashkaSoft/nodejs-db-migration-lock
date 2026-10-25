@@ -30,6 +30,7 @@
 - [Long migrations](#long-migrations)
 - [Releasing a stuck lock](#releasing-a-stuck-lock)
 - [Development](#development)
+- [Publishing to npm](#publishing-to-npm)
 - [Contributing](#contributing)
   - [Adding a New Database](#adding-a-new-database)
 - [License](#license)
@@ -401,6 +402,52 @@ YUGABYTE_IMAGE=docker.io/yugabytedb/yugabyte:2025.2.8.0-b60 npm run test:e2e:yug
 
 Multi-replica apps live in [`examples/`](./examples) (NestJS/Express/Fastify + TypeORM, NestJS + Sequelize, NestJS + Knex, NestJS + SQLite, NestJS and Express + SQL Server, NestJS + Prisma) against Postgres, MySQL, SQLite, and SQL Server.
 
+## Publishing to npm
+
+Packages use **Lerna independent** versions (`lerna.json`). Each publishable package under `packages/*` gets its own semver and git tag:
+
+```text
+@nodejs-db-migration-lock/core@0.2.0
+@nodejs-db-migration-lock/postgres@0.2.0
+```
+
+`lerna version` only bumps packages with conventional commits since **that package’s last tag**. Untouched packages are not tagged.
+
+### One-time setup
+
+1. Create the npm scope **`@nodejs-db-migration-lock`**.
+2. Create a granular access token: **Read and write (stage only)** for that scope (or all packages).
+3. In GitHub → **Settings → Secrets**, set **`NPM_TOKEN`** to that token on `JashkaSoft/nodejs-db-migration-lock`.
+4. Maintainers need **2FA** on npm to approve staged versions.
+5. Use **npm ≥ 11.15.0** locally for `npm stage` (see `engines` in root `package.json`).
+6. If `main` is branch-protected, allow the **Version** workflow (or a PAT) to push release commits and tags.
+
+### Release flow
+
+**Option A — GitHub Actions:** run the **Version** workflow (`workflow_dispatch`). It runs tests, `lerna version`, creates GitHub Releases for bumped packages, and pushes the release commit and tags to `main`.
+
+**Option B — locally:**
+
+```bash
+git checkout main && git pull
+npm test && npm run build
+npm run version
+git push origin main --follow-tags
+```
+
+Pushing tags triggers **Stage release** (`.github/workflows/publish.yml`). CI runs `npm run stage:git`, which calls **`npm stage publish`** for each package tagged at that commit (not a live registry release).
+
+**Promote to npm (maintainer, 2FA):**
+
+```bash
+npm stage list
+npm stage approve @nodejs-db-migration-lock/core@0.2.0 --otp <code>
+```
+
+Repeat `approve` for each staged package version. Reject with `npm stage reject` if needed.
+
+Direct `npm publish` from CI is intentionally not used (stage-only tokens return `E_STAGE_REQUIRED`). Local emergency publish still works with `npm login` and `npm run publish`; do not use `publish:git` in CI.
+
 ## 🤝 Contributing
 
 We welcome contributions! Here's how you can help:
@@ -426,7 +473,7 @@ See [examples/custom-database-example.ts](./examples/custom-database-example.ts)
 
 ## 📄 License
 
-MIT © [Your Name]
+[MIT](./LICENSE) © Insidexa
 
 ## 🙏 Acknowledgments
 

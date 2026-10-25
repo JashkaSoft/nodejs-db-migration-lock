@@ -1,0 +1,40 @@
+name: Stage release
+
+on:
+  push:
+    tags:
+      - '@nodejs-db-migration-lock/*'
+
+permissions:
+  contents: read
+
+# One release commit often gets several package tags; dedupe staging on the same SHA.
+concurrency:
+  group: stage-release-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+
+      # npm stage publish requires CLI >= 11.15.0
+      - name: Use npm with staged publishing support
+        run: npm install -g npm@^11.15.0
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+      - name: Stage tagged packages on npm (maintainer approves with 2FA)
+        run: npm run stage:git
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
