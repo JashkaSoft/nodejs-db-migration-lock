@@ -47,10 +47,12 @@ export function releaseTagsForRun() {
 
   const parsedTrigger = parseReleaseTag(trigger);
   if (parsedTrigger) {
-    if (!atHead.has(parsedTrigger.tag)) {
-      throw new Error(
-        `Release tag ${parsedTrigger.tag} is not on HEAD (${headTags.length} tag(s) at HEAD).`,
-      );
+    try {
+      execSync(`git rev-parse ${JSON.stringify(`${parsedTrigger.tag}^{commit}`)}`, {
+        stdio: 'ignore',
+      });
+    } catch {
+      throw new Error(`Release tag ${parsedTrigger.tag} was not found in this clone.`);
     }
     return [parsedTrigger];
   }
