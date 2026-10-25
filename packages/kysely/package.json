@@ -14,6 +14,12 @@
     "test:e2e:postgres": "./tests/e2e/run-test.sh postgres",
     "prepublishOnly": "npm run build"
   },
+  "keywords": [
+    "database",
+    "migration",
+    "lock",
+    "kysely"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

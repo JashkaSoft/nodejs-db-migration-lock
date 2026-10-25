@@ -37,7 +37,6 @@ export function tagsAtHead() {
  */
 export function releaseTagsForRun() {
   const headTags = tagsAtHead();
-  const atHead = new Set(headTags);
   const parsedAtHead = headTags.map(parseReleaseTag).filter(Boolean);
 
   const trigger =

@@ -14,6 +14,12 @@
     "test:e2e:oracledb": "./tests/e2e/run-test.sh oracledb",
     "prepublishOnly": "npm run build"
   },
+  "keywords": [
+    "database",
+    "migration",
+    "lock",
+    "oracle"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
