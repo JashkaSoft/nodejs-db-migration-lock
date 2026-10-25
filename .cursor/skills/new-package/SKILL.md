@@ -25,7 +25,7 @@ Do not create Next.js unless the user asked for Next.js. Replica examples are Ne
 ## Dialect / adapter package
 
 1. `packages/<name>/` with `src/` (`index.ts` re-exports), `tests/unit/`, `tests/jest.config.unit.js` mapping `@nodejs-db-migration-lock/core` to `../core/src`.
-2. `package.json`: `@nodejs-db-migration-lock/<name>`, `files: ["dist", "README.md"]`, depends on `core` only. Client libraries are **peerDependencies** (optional meta). Independent `0.1.0`.
+2. `package.json`: `@nodejs-db-migration-lock/<name>`, `files: ["dist", "README.md"]`, depends on `core` only. Client libraries are **peerDependencies** (optional meta). Independent `0.1.0`. `keywords` must include `database`, `migration`, `lock`, plus the dialect or ORM name (`postgres`/`postgresql`, `cockroach`/`cockroachdb`, `mikroorm`/`mikro-orm`). npm package pages show **none** when this field is missing.
 3. `tsconfig.json`: extend root, `references: [{ "path": "../core" }]`.
 4. Implement `SqlDriver` / `LockProvider` from `@nodejs-db-migration-lock/core`. Do not change `MigrationCoordinator` for a new dialect.
 5. Unit tests next to `tests/unit/`, not under `src/`.
