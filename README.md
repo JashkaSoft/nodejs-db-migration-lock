@@ -1,12 +1,13 @@
 # nodejs-db-migration-lock
 
-> A database-agnostic migration lock library for Node.js, similar to Liquibase's lock system but designed specifically for Node.js applications.
+> A database-agnostic migration lock for Node.js — inspired by the lock problem Liquibase and Flyway solve, as a small library that wraps your existing migration runner (TypeORM, Knex, Sequelize, raw SQL, …).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Contents
 
 - [Overview](#overview)
+- [Relationship to Liquibase and Flyway](#relationship-to-liquibase-and-flyway)
 - [Key Features](#key-features)
 - [Packages](#packages)
 - [Quick Start](#quick-start)
@@ -40,6 +41,18 @@
 ## 🎯 Overview
 
 `nodejs-db-migration-lock` ensures that only one process runs database migrations at a time in distributed environments. Whether you're deploying to Kubernetes with multiple replicas, running zero-downtime deployments, or have multiple CI/CD pipelines, this library prevents concurrent migration conflicts.
+
+## Relationship to Liquibase and Flyway
+
+This project is **not** based on Liquibase or Flyway. It borrows the **idea** of a migration lock: when several migrators could run at once, the database needs a single winner.
+
+| Typical Liquibase / Flyway setup | This library |
+|----------------------------------|--------------|
+| Dedicated migration CLI or job in the deploy pipeline | Migrations run **inside your Node.js app** (ORM `runMigrations`, Knex migrate, etc.) |
+| Changelog, versioning, and lock built into the tool | **Lock only** — you keep your migration files and runner |
+| Often one controlled migration step per release | Many **replicas** or pipelines may all call migrate at startup |
+
+Liquibase and Flyway answer *what* to run and *how* to track it. This library answers *who* may run migrations right now when multiple Node processes share one database. Use it together with TypeORM, Sequelize, Knex, Prisma migrate hooks, or any custom `MigrationRunner` — not as a replacement for those tools.
 
 ## ✨ Key Features
 
@@ -477,7 +490,8 @@ See [examples/custom-database-example.ts](./examples/custom-database-example.ts)
 
 ## 🙏 Acknowledgments
 
-Inspired by:
+Inspired by the migration-lock problem space (not their code or changelog formats):
+
 - [Liquibase](https://www.liquibase.org/) - Database change management
 - [Flyway](https://flywaydb.org/) - Database migrations
 - [node-pg-migrate](https://github.com/salsita/node-pg-migrate) - PostgreSQL migrations
